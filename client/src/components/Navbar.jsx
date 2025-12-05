@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import CitySelector from './CitySelector';
-import { Bell, LogOut, User, Menu, X, Sun, Moon } from 'lucide-react';
+import { Bell, LogOut, User, Menu, X, Sun, Moon, Settings, UserCircle, LayoutDashboard, Search, Heart, Shield } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const Navbar = () => {
   const { user, logout } = useAppContext();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Hide city selector on auth pages
+  const isAuthPage = ['/login', '/signup'].includes(location.pathname);
 
   const handleLogout = async () => {
     await logout();
@@ -41,36 +46,91 @@ const Navbar = () => {
                 Mediverse
               </span>
             </Link>
-            <div className="hidden md:block">
-              <CitySelector />
-            </div>
+            {!isAuthPage && (
+              <div className="hidden md:block">
+                <CitySelector />
+              </div>
+            )}
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
             {user ? (
               <>
-                <Link to="/search">
-                  <Button variant="ghost">Find Doctors</Button>
-                </Link>
-                <Link to="/favorites">
-                  <Button variant="ghost">Favorites</Button>
-                </Link>
-                <Link to="/dashboard">
-                  <Button variant="ghost">Dashboard</Button>
-                </Link>
+                {user.role === 'patient' && (
+                  <>
+                    <Link to="/search">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <Search className="h-4 w-4" />
+                        Find Doctors
+                      </Button>
+                    </Link>
+                    <Link to="/favorites">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <Heart className="h-4 w-4" />
+                        Favorites
+                      </Button>
+                    </Link>
+                    <Link to="/dashboard">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <LayoutDashboard className="h-4 w-4" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                  </>
+                )}
+                {user.role === 'doctor' && (
+                  <Link to="/dashboard">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                )}
+                {user.role === 'admin' && (
+                  <Link to="/dashboard">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <Shield className="h-4 w-4" />
+                      Admin Panel
+                    </Button>
+                  </Link>
+                )}
                 <Button variant="ghost" size="icon" onClick={toggleTheme} title="Toggle theme">
                   {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.profilePhoto} />
-                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium">{user.name}</span>
-                </div>
-                <Button variant="ghost" size="icon" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4" />
-                </Button>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="gap-2 h-9 px-2">
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={user.profilePhoto} />
+                        <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user.name}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/profile')}>
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      <span>Edit Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <>
@@ -100,9 +160,11 @@ const Navbar = () => {
 
         {mobileMenuOpen && (
           <div className="md:hidden border-t py-4 space-y-2">
-            <div className="px-2">
-              <CitySelector />
-            </div>
+            {!isAuthPage && (
+              <div className="px-2">
+                <CitySelector />
+              </div>
+            )}
             <button
               onClick={toggleTheme}
               className="w-full text-left px-2 py-2 hover:bg-accent rounded flex items-center gap-2"

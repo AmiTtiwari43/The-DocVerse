@@ -186,15 +186,29 @@ const seedData = async () => {
 
     // Create Favorites
     const favorites = [];
-    for (let i = 0; i < 15; i++) {
+    const favoritePairs = new Set();
+    let attempts = 0;
+    const maxAttempts = 100;
+    
+    while (favorites.length < 15 && attempts < maxAttempts) {
       const patient = patients[Math.floor(Math.random() * patients.length)];
       const doctor = doctors[Math.floor(Math.random() * doctors.length)];
+      const pairKey = `${patient._id}-${doctor._id}`;
       
-      const favorite = await Favorite.create({
-        userId: patient._id,
-        doctorId: doctor._id,
-      });
-      favorites.push(favorite);
+      if (!favoritePairs.has(pairKey)) {
+        try {
+          const favorite = await Favorite.create({
+            userId: patient._id,
+            doctorId: doctor._id,
+          });
+          favorites.push(favorite);
+          favoritePairs.add(pairKey);
+        } catch (error) {
+          // Skip if duplicate (shouldn't happen with Set check, but just in case)
+          console.log(`Skipping duplicate favorite: ${pairKey}`);
+        }
+      }
+      attempts++;
     }
     console.log(`Created ${favorites.length} favorites`);
 

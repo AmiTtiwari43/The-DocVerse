@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -73,23 +72,49 @@ const AIChatWidget = () => {
         <MessageCircle className="h-6 w-6" />
       </motion.button>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-primary" />
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+            />
+            
+            {/* Sidebar Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed right-0 top-0 bottom-0 w-full sm:w-[450px] bg-background shadow-2xl z-50 flex flex-col border-l"
+            >
+              <div className="px-6 pt-6 pb-4 border-b flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Bot className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold">AI Health Assistant</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Describe your symptoms and get instant health advice
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
               </div>
-              <div>
-                <DialogTitle>AI Health Assistant</DialogTitle>
-                <DialogDescription>
-                  Describe your symptoms and get instant health advice
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <AnimatePresence>
               {messages.length === 0 && (
                 <motion.div
@@ -174,9 +199,9 @@ const AIChatWidget = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+              </div>
 
-          <div className="border-t p-4">
+              <div className="border-t p-4 bg-background">
             <div className="flex gap-2">
               <Input
                 value={input}
@@ -195,11 +220,13 @@ const AIChatWidget = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              This is not a substitute for professional medical advice
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+                  This is not a substitute for professional medical advice
+                </p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 };

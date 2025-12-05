@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { Separator } from '../components/ui/separator';
 import { useToast } from '../components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import AppointmentCard from '../components/AppointmentCard';
 import api from '../utils/api';
 import { 
@@ -25,7 +26,12 @@ import {
   Send,
   Shield,
   UserCheck,
-  UserX
+  UserX,
+  DollarSign,
+  MessageSquare,
+  Trash2,
+  BarChart3,
+  Activity
 } from 'lucide-react';
 
 const Dashboard = () => {
@@ -44,8 +50,13 @@ const Dashboard = () => {
   // Admin states
   const [adminData, setAdminData] = useState({ 
     users: [], 
+    doctors: [],
+    patients: [],
     pendingDoctors: [], 
-    allAppointments: [] 
+    allAppointments: [],
+    payments: [],
+    reviews: [],
+    analytics: null
   });
   const [adminLoading, setAdminLoading] = useState(false);
 
@@ -117,15 +128,37 @@ const Dashboard = () => {
   const fetchAdminData = async () => {
     setAdminLoading(true);
     try {
-      const [usersRes, pendingRes, appRes] = await Promise.all([
+      const [usersRes, pendingRes, appRes, paymentsRes, analyticsRes] = await Promise.all([
         api.get('/admin/users'),
         api.get('/admin/doctors/pending'),
         api.get('/admin/appointments'),
+        api.get('/payments/history').catch(() => ({ data: { data: [] } })),
+        api.get('/analytics/admin').catch(() => ({ data: { data: null } }))
       ]);
+      
+      // Separate doctors and patients
+      const allUsers = usersRes.data.data || [];
+      const doctors = allUsers.filter(u => u.role === 'doctor');
+      const patients = allUsers.filter(u => u.role === 'patient');
+      
+      // Fetch all reviews
+      let allReviews = [];
+      try {
+        const reviewsRes = await api.get('/admin/reviews');
+        allReviews = reviewsRes.data.data || [];
+      } catch (err) {
+        console.log('Reviews endpoint not available');
+      }
+      
       setAdminData({
-        users: usersRes.data.data,
-        pendingDoctors: pendingRes.data.data,
-        allAppointments: appRes.data.data,
+        users: allUsers,
+        doctors,
+        patients,
+        pendingDoctors: pendingRes.data.data || [],
+        allAppointments: appRes.data.data || [],
+        payments: paymentsRes.data.data || [],
+        reviews: allReviews,
+        analytics: analyticsRes.data.data
       });
     } catch (error) {
       toast({
@@ -434,6 +467,10 @@ const Dashboard = () => {
                           <p className="font-semibold">{doctorProfile.city}</p>
                         </div>
                         <div>
+                          <p className="text-sm text-muted-foreground">Gender</p>
+                          <p className="font-semibold capitalize">{doctorProfile.gender || 'Not specified'}</p>
+                        </div>
+                        <div>
                           <p className="text-sm text-muted-foreground">Status</p>
                           <Badge variant={doctorProfile.status === 'verified' ? 'success' : 'warning'}>
                             {doctorProfile.status === 'verified' ? 'Verified' : 
@@ -508,6 +545,22 @@ const Dashboard = () => {
                             onChange={(e) => setProfileData({ ...profileData, city: e.target.value })}
                             required
                           />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Gender</label>
+                          <Select
+                            value={profileData.gender || ''}
+                            onValueChange={(value) => setProfileData({ ...profileData, gender: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <label className="text-sm font-medium mb-2 block">License Number</label>
@@ -657,21 +710,129 @@ const Dashboard = () => {
 
         {/* Admin Dashboard */}
         {user?.role === 'admin' && (
-          <Tabs defaultValue="pending" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="pending">
-                <Shield className="h-4 w-4 mr-2" />
-                Pending Doctors
+          <Tabs defaultValue="analytics" className="space-y-6">
+            <TabsList className="grid grid-cols-3 lg:grid-cols-7 gap-2">
+              <TabsTrigger value="analytics" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Analytics</span>
               </TabsTrigger>
-              <TabsTrigger value="users">
-                <Users className="h-4 w-4 mr-2" />
-                All Users
+              <TabsTrigger value="pending" className="gap-2">
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Pending</span>
               </TabsTrigger>
-              <TabsTrigger value="appointments">
-                <Calendar className="h-4 w-4 mr-2" />
-                Appointments
+              <TabsTrigger value="doctors" className="gap-2">
+                <UserCheck className="h-4 w-4" />
+                <span className="hidden sm:inline">Doctors</span>
+              </TabsTrigger>
+              <TabsTrigger value="patients" className="gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Patients</span>
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="gap-2">
+                <DollarSign className="h-4 w-4" />
+                <span className="hidden sm:inline">Payments</span>
+              </TabsTrigger>
+              <TabsTrigger value="reviews" className="gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Reviews</span>
+              </TabsTrigger>
+              <TabsTrigger value="appointments" className="gap-2">
+                <Calendar className="h-4 w-4" />
+                <span className="hidden sm:inline">Appointments</span>
               </TabsTrigger>
             </TabsList>
+
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Total Patients</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{adminData.patients.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Registered users</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Total Doctors</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{adminData.doctors.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Verified & pending</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Total Appointments</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{adminData.allAppointments.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">All time bookings</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="border-2">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Pending Approvals</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-orange-600">{adminData.pendingDoctors.length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Doctor verifications</p>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                    <CardDescription>Latest platform updates</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Activity className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-sm font-medium">Platform is running smoothly</p>
+                          <p className="text-xs text-muted-foreground">All systems operational</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Quick Stats</CardTitle>
+                    <CardDescription>Key metrics overview</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Active Patients</span>
+                        <span className="text-sm font-medium">{adminData.patients.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Verified Doctors</span>
+                        <span className="text-sm font-medium">{adminData.doctors.filter(d => d.status === 'verified').length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Total Reviews</span>
+                        <span className="text-sm font-medium">{adminData.reviews.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Completed Appointments</span>
+                        <span className="text-sm font-medium">{adminData.allAppointments.filter(a => a.status === 'completed').length}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
             <TabsContent value="pending" className="space-y-4">
               <Card>
@@ -733,57 +894,311 @@ const Dashboard = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="users" className="space-y-4">
+            {/* Doctors Tab */}
+            <TabsContent value="doctors" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>All Users</CardTitle>
-                  <CardDescription>Manage platform users</CardDescription>
+                  <CardTitle>All Doctors ({adminData.doctors.length})</CardTitle>
+                  <CardDescription>Manage doctor accounts</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Name</th>
-                          <th className="text-left p-2">Email</th>
-                          <th className="text-left p-2">Role</th>
-                          <th className="text-left p-2">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {adminData.users.map((u) => (
-                          <tr key={u._id} className="border-b">
-                            <td className="p-2">{u.name}</td>
-                            <td className="p-2">{u.email}</td>
-                            <td className="p-2">
-                              <Badge>{u.role}</Badge>
-                            </td>
-                            <td className="p-2">
-                              {u.role !== 'admin' && (
+                  <div className="space-y-3">
+                    {adminData.doctors.length > 0 ? (
+                      adminData.doctors.map((doctor) => (
+                        <Card key={doctor._id} className="border">
+                          <CardContent className="pt-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-lg">{doctor.name}</h3>
+                                <p className="text-sm text-muted-foreground">{doctor.email}</p>
+                                <div className="flex gap-2 mt-2">
+                                  <Badge variant={doctor.isBlocked ? 'destructive' : 'default'}>
+                                    {doctor.isBlocked ? 'Blocked' : 'Active'}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
                                 <Button
                                   size="sm"
                                   variant="destructive"
                                   onClick={() => {
-                                    if (window.confirm('Delete this user?')) {
-                                      api.delete(`/admin/users/${u._id}`).then(() => {
+                                    if (window.confirm('Delete this doctor?')) {
+                                      api.delete(`/admin/users/${doctor._id}`).then(() => {
                                         toast({
                                           variant: "success",
                                           title: "Success",
-                                          description: "User deleted",
+                                          description: "Doctor deleted",
                                         });
                                         fetchAdminData();
                                       });
                                     }
                                   }}
                                 >
-                                  Delete
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">No doctors registered</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Patients Tab */}
+            <TabsContent value="patients" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Patients ({adminData.patients.length})</CardTitle>
+                  <CardDescription>Manage patient accounts</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {adminData.patients.length > 0 ? (
+                      adminData.patients.map((patient) => (
+                        <Card key={patient._id} className="border">
+                          <CardContent className="pt-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-lg">{patient.name}</h3>
+                                <p className="text-sm text-muted-foreground">{patient.email}</p>
+                                <div className="flex gap-2 mt-2">
+                                  <Badge>{patient.isBlocked ? 'Blocked' : 'Active'}</Badge>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    if (window.confirm('Delete this patient?')) {
+                                      api.delete(`/admin/users/${patient._id}`).then(() => {
+                                        toast({
+                                          variant: "success",
+                                          title: "Success",
+                                          description: "Patient deleted",
+                                        });
+                                        fetchAdminData();
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">No patients registered</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Payments Tab */}
+            <TabsContent value="payments" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment Management</CardTitle>
+                  <CardDescription>Review and approve payment transactions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {adminData.payments.length > 0 ? (
+                      adminData.payments.slice(0, 20).map((payment) => (
+                        <Card key={payment._id} className="border-2">
+                          <CardContent className="pt-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <DollarSign className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-lg">₹{payment.amount}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Transaction ID: {payment._id?.slice(-8)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="ml-13 space-y-1">
+                                  <p className="text-sm">
+                                    <span className="font-medium">Patient:</span> {payment.patientId?.name || 'N/A'}
+                                  </p>
+                                  <p className="text-sm">
+                                    <span className="font-medium">Doctor:</span> {payment.doctorId?.name || 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {payment.paymentMethod?.toUpperCase() || 'N/A'} • {new Date(payment.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                <Badge 
+                                  variant={
+                                    payment.status === 'completed' ? 'default' : 
+                                    payment.status === 'pending' ? 'warning' : 
+                                    'destructive'
+                                  }
+                                  className="capitalize"
+                                >
+                                  {payment.status}
+                                </Badge>
+                                {payment.status === 'pending' && (
+                                  <div className="flex gap-2 mt-2">
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      onClick={() => {
+                                        if (window.confirm('Approve this payment?')) {
+                                          api.patch(`/admin/payments/${payment._id}/approve`).then(() => {
+                                            toast({
+                                              variant: "success",
+                                              title: "Payment Approved",
+                                              description: "Payment has been approved successfully",
+                                            });
+                                            fetchAdminData();
+                                          }).catch(err => {
+                                            toast({
+                                              variant: "destructive",
+                                              title: "Error",
+                                              description: err.response?.data?.message || "Failed to approve payment. Endpoint may not be implemented.",
+                                            });
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => {
+                                        if (window.confirm('Reject this payment?')) {
+                                          api.patch(`/admin/payments/${payment._id}/reject`).then(() => {
+                                            toast({
+                                              variant: "success",
+                                              title: "Payment Rejected",
+                                              description: "Payment has been rejected",
+                                            });
+                                            fetchAdminData();
+                                          }).catch(err => {
+                                            toast({
+                                              variant: "destructive",
+                                              title: "Error",
+                                              description: err.response?.data?.message || "Failed to reject payment. Endpoint may not be implemented.",
+                                            });
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <XCircle className="h-3 w-3 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-muted-foreground">No payments to review</p>
+                      </div>
+                    )}
+                  </div>
+                  {adminData.payments.length > 0 && (
+                    <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        💡 <strong>Note:</strong> Payment approval/rejection requires backend API endpoints 
+                        (<code>/admin/payments/:id/approve</code> and <code>/admin/payments/:id/reject</code>). 
+                        If these don't work, contact your developer to implement them.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Reviews Tab */}
+            <TabsContent value="reviews" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Review Management ({adminData.reviews.length})</CardTitle>
+                  <CardDescription>Moderate user reviews</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {adminData.reviews.length > 0 ? (
+                      adminData.reviews.map((review) => (
+                        <Card key={review._id} className="border">
+                          <CardContent className="pt-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-semibold">{review.patientId?.name || 'Anonymous'}</p>
+                                  <div className="flex items-center gap-1">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-3 w-3 ${
+                                          i < review.rating
+                                            ? 'fill-yellow-400 text-yellow-400'
+                                            : 'fill-gray-300 text-gray-300'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground mb-1">
+                                  For: Dr. {review.doctorId?.name || 'Unknown'}
+                                </p>
+                                <p className="text-sm">{review.comment}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {new Date(review.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  if (window.confirm('Delete this review?')) {
+                                    api.delete(`/admin/reviews/${review._id}`).then(() => {
+                                      toast({
+                                        variant: "success",
+                                        title: "Success",
+                                        description: "Review deleted",
+                                      });
+                                      fetchAdminData();
+                                    }).catch(err => {
+                                      toast({
+                                        variant: "destructive",
+                                        title: "Error",
+                                        description: "Failed to delete review",
+                                      });
+                                    });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">No reviews yet</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

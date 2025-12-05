@@ -44,14 +44,14 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-blue-50/50">
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-blue-50/50 border-b">
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 py-12 md:py-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-center space-y-6"
+            className="text-center space-y-5"
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-4">
               <Sparkles className="h-4 w-4" />
@@ -84,18 +84,18 @@ const Home = () => {
 
       {/* Top Doctors Section */}
       {topDoctors.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 py-16">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Top Rated Doctors</h2>
+        <div className="max-w-7xl mx-auto px-4 py-10">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold mb-3">Top Rated Doctors</h2>
             <p className="text-muted-foreground text-lg">
               {city ? `Best doctors in ${city}` : 'Highly rated healthcare professionals'}
             </p>
           </div>
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {[...Array(3)].map((_, i) => (
-                <Card key={i}>
-                  <CardContent className="p-6 space-y-4">
+                <Card key={i} className="border-2">
+                  <CardContent className="p-5 space-y-4">
                     <Skeleton className="h-16 w-16 rounded-full" />
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
@@ -111,6 +111,7 @@ const Home = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
+                  className="card-hover"
                 >
                   <DoctorCard doctor={doctor} index={index} />
                 </motion.div>
@@ -129,10 +130,10 @@ const Home = () => {
       )}
 
       {/* Features Section */}
-      <div className="bg-muted/50 py-16">
+      <div className="bg-muted/30 py-10 border-y">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Why Choose Mediverse?</h2>
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold mb-3">Why Choose Mediverse?</h2>
             <p className="text-muted-foreground text-lg">
               Everything you need for seamless healthcare management
             </p>
@@ -144,9 +145,9 @@ const Home = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.4 }}
             >
-              <Card className="h-full hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+              <Card className="h-full hover:shadow-lg transition-all border-2 hover:border-primary/30 premium-shadow">
+                <CardHeader className="pb-3">
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                     <Shield className="h-6 w-6 text-primary" />
                   </div>
                   <CardTitle>Verified Doctors</CardTitle>
@@ -163,7 +164,7 @@ const Home = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: 0.1 }}
             >
-              <Card className="h-full hover:shadow-lg transition-shadow">
+              <Card className="h-full hover:shadow-lg transition-all border-2 hover:border-primary/30 premium-shadow">
                 <CardHeader>
                   <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <Calendar className="h-6 w-6 text-primary" />
@@ -218,7 +219,7 @@ const Home = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-gradient-to-r from-primary to-blue-600 text-white py-16">
+      <div className="bg-gradient-to-r from-primary to-blue-600 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
