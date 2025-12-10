@@ -5,7 +5,6 @@ import { useTheme } from '../context/ThemeContext';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
-import CitySelector from './CitySelector';
 import { Bell, LogOut, User, Menu, X, Sun, Moon, Settings, UserCircle, LayoutDashboard, Search, Heart, Shield } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
@@ -45,15 +44,14 @@ const Navbar = () => {
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.6, ease: "easeInOut" }}
               >
-                <span className="text-primary-foreground font-bold text-lg">M</span>
+                <span className="text-primary-foreground font-bold text-lg">D</span>
               </motion.div>
               <span className="text-xl font-bold text-gradient">
-                Mediverse
+                THE DocVerse
               </span>
             </Link>
             {!isAuthPage && (
               <div className="hidden md:block">
-                <CitySelector />
               </div>
             )}
           </div>
@@ -187,7 +185,6 @@ const Navbar = () => {
           <div className="md:hidden border-t py-4 space-y-2">
             {!isAuthPage && (
               <div className="px-2">
-                <CitySelector />
               </div>
             )}
             <button

@@ -22,9 +22,32 @@ const reviewSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    title: {
+      type: String,
+      trim: true,
+    },
+    isAnonymous: {
+      type: Boolean,
+      default: false,
+    },
+    isRecommended: {
+      type: Boolean,
+      default: true,
+    },
+    detailedRatings: {
+      waitTime: { type: Number, min: 1, max: 5 },
+      bedsideManner: { type: Number, min: 1, max: 5 },
+      staffFriendliness: { type: Number, min: 1, max: 5 },
+    },
     doctorReply: {
       type: String,
     },
+    doctorReplyLikes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     replyDate: {
       type: Date,
     },
@@ -39,6 +62,16 @@ const reviewSchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+        parentId: {
+          type: mongoose.Schema.Types.ObjectId,
+          default: null,
+        },
+        likes: [
+          {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+          },
+        ],
       },
     ],
     likes: [

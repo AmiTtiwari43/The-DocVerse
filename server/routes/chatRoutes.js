@@ -1,8 +1,12 @@
 const express = require('express');
-const { getMockAIResponse } = require('../controllers/chatController');
+const protect = require('../middleware/auth');
+const { processChat, getChatHistory } = require('../controllers/chatController');
 
 const router = express.Router();
 
-router.post('/', getMockAIResponse);
+router.use(protect); // All chat routes require authentication
+
+router.post('/', processChat);
+router.get('/history', getChatHistory);
 
 module.exports = router;

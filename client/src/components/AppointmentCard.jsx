@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import RescheduleModal from './RescheduleModal';
+import PaymentModal from './PaymentModal';
 import { Calendar, Clock, MapPin, RefreshCw, User, Mail, Phone, CalendarCheck } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { motion } from 'framer-motion';
@@ -12,6 +13,7 @@ import { motion } from 'framer-motion';
 const AppointmentCard = ({ appointment, onUpdate }) => {
   const { user } = useAppContext();
   const [showReschedule, setShowReschedule] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
 
   const getStatusVariant = (status) => {
     switch (status) {
@@ -172,6 +174,19 @@ const AppointmentCard = ({ appointment, onUpdate }) => {
               </div>
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
+              {/* Pay Now Button for Pending Appointments (Patient Only) */}
+              {!isDoctorView && appointment.status === 'pending' && (
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => setShowPayment(true)}
+                  >
+                    Pay Now
+                  </Button>
+                </motion.div>
+              )}
+
               {canReschedule() && (
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
@@ -196,6 +211,19 @@ const AppointmentCard = ({ appointment, onUpdate }) => {
           onOpenChange={setShowReschedule}
           appointment={appointment}
           onSuccess={() => {
+            if (onUpdate) onUpdate();
+          }}
+        />
+      )}
+
+      {showPayment && (
+        <PaymentModal
+          open={showPayment}
+          onOpenChange={setShowPayment}
+          appointment={appointment}
+          doctor={appointment.doctorId}
+          onSuccess={() => {
+            setShowPayment(false);
             if (onUpdate) onUpdate();
           }}
         />

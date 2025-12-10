@@ -13,7 +13,10 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: false, // Optional for Google Users
+  },
+  googleId: {
+    type: String, // Store Google ID
   },
   role: {
     type: String,
@@ -27,10 +30,28 @@ const userSchema = new mongoose.Schema({
   profilePhoto: {
     type: String,
   },
+  phone: {
+    type: String,
+  },
+  address: {
+    type: String,
+  },
   isBlocked: {
     type: Boolean,
     default: false,
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  otp: {
+    type: String,
+  },
+  otpExpires: {
+    type: Date,
+  },
+}, {
+  timestamps: true,
 });
 
 // Pre-save hook to hash password before saving

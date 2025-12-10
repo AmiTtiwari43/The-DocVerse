@@ -68,7 +68,7 @@ const AboutUs = () => {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-4">
               <Heart className="h-4 w-4" />
-              <span className="text-sm font-medium">About Mediverse</span>
+              <span className="text-sm font-medium">About THE DocVerse</span>
             </div>
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
               Transforming Healthcare Access
@@ -122,7 +122,7 @@ const AboutUs = () => {
               </div>
               <h2 className="text-4xl font-bold">Bridging the Gap Between Patients and Doctors</h2>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Mediverse was founded with a simple yet powerful vision: to eliminate the barriers that prevent people from accessing quality healthcare. We believe that finding a trusted doctor and booking an appointment should be as easy as ordering food online.
+                THE DocVerse was founded with a simple yet powerful vision: to eliminate the barriers that prevent people from accessing quality healthcare. We believe that finding a trusted doctor and booking an appointment should be as easy as ordering food online.
               </p>
               <p className="text-lg text-muted-foreground leading-relaxed">
                 Through our platform, we're creating a transparent healthcare ecosystem where patients can make informed decisions based on verified information and authentic reviews.
@@ -221,7 +221,7 @@ const AboutUs = () => {
           >
             <h2 className="text-4xl md:text-5xl font-bold">Ready to Experience Better Healthcare?</h2>
             <p className="text-xl text-white/90 max-w-2xl mx-auto">
-              Join thousands of patients who trust Mediverse for their healthcare needs
+              Join thousands of patients who trust THE DocVerse for their healthcare needs
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Link to="/search">

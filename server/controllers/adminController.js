@@ -155,6 +155,19 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+// Get all reviews
+exports.getAllReviews = async (req, res) => {
+  try {
+    const reviews = await Review.find()
+      .populate('patientId', 'name email')
+      .populate('doctorId', 'name specialization userId')
+      .sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: reviews });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Delete a review (optional)
 exports.deleteReviewAdmin = async (req, res) => {
   try {

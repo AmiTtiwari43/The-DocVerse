@@ -63,7 +63,8 @@ exports.createAppointment = async (req, res) => {
     // Send confirmation email
     const patient = await User.findById(req.user.id);
     if (patient && patient.email) {
-      const emailData = emailTemplates.appointmentConfirmation(appointment, doctor, patient);
+      // Send Pending Email (Payment Required)
+      const emailData = emailTemplates.appointmentPending(appointment, doctor, patient);
       await sendEmail({
         to: patient.email,
         ...emailData,
@@ -95,7 +96,7 @@ exports.getAppointmentsByUser = async (req, res) => {
     }
 
     const appointments = await Appointment.find(filter)
-      .populate('doctorId', 'name specialization city')
+      .populate('doctorId', 'name specialization city fees')
       .populate('patientId', 'name email phone')
       .sort({ date: -1, createdAt: -1 });
 
@@ -125,8 +126,46 @@ exports.updateAppointmentStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
+    // New Check: Prevent doctor from confirming if payment not approved
+    if (status === 'confirmed') {
+        const Payment = require('../models/Payment');
+        const payment = await Payment.findOne({ appointmentId: appointment._id });
+        if (payment && payment.adminStatus !== 'approved') {
+             return res.status(400).json({ 
+                 success: false, 
+                 message: 'Cannot confirm appointment. Payment verification by Admin is pending.' 
+             });
+        }
+    }
+
     appointment.status = status;
     await appointment.save();
+
+    // Send notifications based on doctor's action
+    if (isDoctor) {
+      const patient = await User.findById(appointment.patientId);
+      const doctorUser = await Doctor.findById(appointment.doctorId);
+
+      if (status === 'confirmed') {
+        // Step 2 Complete: Doctor Confirmed -> Email Patient
+        // Fetch payment to include in receipt
+        const Payment = require('../models/Payment');
+        const payment = await Payment.findOne({ appointmentId: appointment._id });
+        
+        const emailData = emailTemplates.appointmentConfirmation(appointment, doctorUser, patient, payment);
+        await sendEmail({
+          to: patient.email,
+          ...emailData
+        });
+      } else if (status === 'cancelled' || status === 'rejected') {
+        // Doctor Rejected -> Email Patient
+         const emailData = emailTemplates.appointmentRejectedByDoctor(appointment, doctorUser, patient);
+         await sendEmail({
+           to: patient.email,
+           ...emailData
+         });
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -167,7 +206,7 @@ exports.getAvailableSlots = async (req, res) => {
     const bookedAppointments = await Appointment.find({
       doctorId,
       date: { $gte: appointmentDate, $lt: nextDay },
-      status: { $in: ['pending', 'confirmed'] }, // Only pending and confirmed are considered booked
+      status: { $in: ['pending', 'confirmed', 'completed'] }, // Pending, confirmed, and completed block slots
     })
       .populate('patientId', 'name email')
       .sort({ createdAt: -1 });
@@ -338,7 +377,11 @@ exports.rescheduleAppointment = async (req, res) => {
     // Send email notification
     const userToNotify = await User.findById(isDoctor ? appointment.patientId._id : appointment.doctorId.userId);
     if (userToNotify && userToNotify.email) {
-      const emailData = emailTemplates.appointmentConfirmation(appointment, appointment.doctorId, userToNotify);
+      // Fetch payment details for the receipt
+      const Payment = require('../models/Payment');
+      const payment = await Payment.findOne({ appointmentId: appointment._id });
+
+      const emailData = emailTemplates.appointmentConfirmation(appointment, appointment.doctorId, userToNotify, payment);
       await sendEmail({
         to: userToNotify.email,
         subject: 'Appointment Rescheduled',

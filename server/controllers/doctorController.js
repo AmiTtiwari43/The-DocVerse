@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Review = require('../models/Review');
 const Notification = require('../models/Notification');
 
+
 // Get all doctors with filters
 exports.getDoctors = async (req, res) => {
   try {
@@ -10,7 +11,8 @@ exports.getDoctors = async (req, res) => {
 
     let filter = { status: 'verified', isVerified: true };
     if (city) filter.city = city;
-    if (specialization) filter.specialization = specialization;
+    // Don't strict filter by specialization, used for sorting prioritization
+    // if (specialization) filter.specialization = specialization;
     if (gender) filter.gender = gender;
     if (minFee || maxFee) {
       filter.fees = {};
@@ -33,16 +35,44 @@ exports.getDoctors = async (req, res) => {
       })
     );
 
-    // Sort
-    if (sort === 'rating') {
-      doctorsWithRatings.sort((a, b) => b.avgRating - a.avgRating);
-    } else if (sort === 'fee_low') {
-      doctorsWithRatings.sort((a, b) => a.fees - b.fees);
-    } else if (sort === 'fee_high') {
-      doctorsWithRatings.sort((a, b) => b.fees - a.fees);
-    } else if (sort === 'experience') {
-      doctorsWithRatings.sort((a, b) => b.experience - a.experience);
+    // Custom Sort
+    if (specialization) {
+      console.log(`[DEBUG] Sorting for specialization: "${specialization}"`);
     }
+
+    doctorsWithRatings.sort((a, b) => {
+      // 1. Prioritize requested specialization
+      if (specialization) {
+        const specLower = specialization.toLowerCase().trim();
+        const aSpec = (a.specialization || '').toLowerCase().trim();
+        const bSpec = (b.specialization || '').toLowerCase().trim();
+        
+        const aMatch = aSpec === specLower;
+        const bMatch = bSpec === specLower;
+        
+        if (aMatch && !bMatch) {
+             // console.log(`[DEBUG] Prioritizing ${a.name} (${aSpec}) over ${b.name} (${bSpec})`); 
+             return -1;
+        }
+        if (!aMatch && bMatch) {
+             // console.log(`[DEBUG] Prioritizing ${b.name} (${bSpec}) over ${a.name} (${aSpec})`);
+             return 1;
+        }
+      }
+
+      // 2. Secondary sorts
+      if (sort === 'rating') return b.avgRating - a.avgRating;
+      if (sort === 'fee_low') return a.fees - b.fees;
+      if (sort === 'fee_high') return b.fees - a.fees;
+      if (sort === 'experience') return b.experience - a.experience;
+      
+      return 0;
+    });
+
+    if (specialization) {
+        console.log('[DEBUG] Sorted Order:', doctorsWithRatings.map(d => `${d.name} (${d.specialization})`).slice(0, 5));
+    }
+
 
     res.status(200).json({ success: true, data: doctorsWithRatings });
   } catch (error) {
@@ -187,12 +217,38 @@ exports.getDoctorStats = async (req, res) => {
     }
 
     const Appointment = require('../models/Appointment');
-    const reviews = await Review.find({ doctorId: doctor._id });
-    const appointments = await Appointment.find({ doctorId: doctor._id });
+    const Payment = require('../models/Payment');
+    const Review = require('../models/Review');
     
+    const appointments = await Appointment.find({ doctorId: doctor._id });
+    const payments = await Payment.find({ doctorId: doctor._id, status: 'completed' });
+    const reviews = await Review.find({ doctorId: doctor._id });
+
     const avgRating = reviews.length > 0 
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
       : 0;
+
+    // Calculate revenue stats
+    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Monthly revenue (Last 6 months)
+    const monthlyRevenue = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+        
+        const monthPayments = payments.filter(p => {
+             const pDate = new Date(p.createdAt);
+             return pDate >= d && pDate < nextMonth;
+        });
+
+        const monthTotal = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+        monthlyRevenue.push({
+            month: d.toLocaleString('default', { month: 'short' }),
+            revenue: monthTotal
+        });
+    }
 
     res.status(200).json({
       success: true,
@@ -202,6 +258,8 @@ exports.getDoctorStats = async (req, res) => {
         totalAppointments: appointments.length,
         pendingAppointments: appointments.filter(a => a.status === 'pending').length,
         completedAppointments: appointments.filter(a => a.status === 'completed').length,
+        totalRevenue,
+        monthlyRevenue
       },
     });
   } catch (error) {

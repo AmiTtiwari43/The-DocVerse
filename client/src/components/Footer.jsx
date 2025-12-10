@@ -35,10 +35,10 @@ const Footer = () => {
                 whileHover={{ rotate: 360, scale: 1.1 }}
                 transition={{ duration: 0.6 }}
               >
-                <span className="text-primary-foreground font-bold text-xl">M</span>
+                <span className="text-primary-foreground font-bold text-xl">D</span>
               </motion.div>
               <span className="text-2xl font-bold text-gradient">
-                Mediverse
+                THE DocVerse
               </span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -129,11 +129,11 @@ const Footer = () => {
             <h3 className="text-base font-semibold">Contact Us</h3>
             <div className="space-y-3">
               <a 
-                href="mailto:support@mediverse.com" 
+                href="mailto:support@docverse.com" 
                 className="flex items-start gap-3 text-sm text-muted-foreground hover:text-primary transition-colors group"
               >
                 <Mail className="h-4 w-4 mt-0.5 flex-shrink-0 group-hover:text-primary" />
-                <span>support@mediverse.com</span>
+                <span>support@docverse.com</span>
               </a>
               <a 
                 href="tel:+918800000000" 
@@ -155,7 +155,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Mediverse. All rights reserved.
+            © {new Date().getFullYear()} THE DocVerse. All rights reserved.
           </p>
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             Made with <Heart className="h-4 w-4 text-red-500 fill-red-500 mx-1" /> for better healthcare

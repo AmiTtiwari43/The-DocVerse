@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -14,37 +14,73 @@ const AIChatWidget = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const { city } = useAppContext();
+  const { user, city } = useAppContext();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const scrollRef = useRef(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isOpen]);
+
+  // Fetch history when user changes or widget opens
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (user && isOpen) {
+        try {
+          const res = await api.get('/chat/history');
+          if (res.data.success) {
+            setMessages(res.data.data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch chat history", error);
+        }
+      } else if (!user) {
+        setMessages([]); // Clear messages if no user
+      }
+    };
+
+    fetchHistory();
+  }, [user, isOpen]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
     const userMessage = input.trim();
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+    // Optimistic update
+    const tempUserMsg = { role: 'user', content: userMessage };
+    setMessages((prev) => [...prev, tempUserMsg]);
     setInput('');
     setLoading(true);
 
     try {
       const response = await api.post('/chat', { symptoms: userMessage, city });
       if (response.data.success) {
+        // Backend now returns the full saved message objects in `history` array (last 2)
+        // Or we can construct it from response data.
+        // Let's use the explicit data returned to ensure tips/doctors are present
+        const data = response.data.data;
         const aiResponse = {
           role: 'ai',
-          content: response.data.data.response,
-          suggestedSpecialization: response.data.data.suggestedSpecialization,
+          content: data.response,
+          tips: data.tips, 
+          suggestedSpecialization: data.suggestedSpecialization,
+          relatedDoctors: data.relatedDoctors
         };
         setMessages((prev) => [...prev, aiResponse]);
       }
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: 'ai', content: 'Sorry, I encountered an error. Please try again.' },
+        { role: 'ai', content: error.response?.data?.message || 'Sorry, I encountered an error. Please try again.' },
       ]);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to get AI response",
+        description: error.response?.data?.message || "Failed to get AI response",
       });
     } finally {
       setLoading(false);
@@ -114,7 +150,7 @@ const AIChatWidget = () => {
                 </Button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-[400px]">
             <AnimatePresence>
               {messages.length === 0 && (
                 <motion.div
@@ -157,6 +193,7 @@ const AIChatWidget = () => {
                     >
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     </div>
+
                     {msg.suggestedSpecialization && (
                       <Button
                         size="sm"
@@ -199,6 +236,9 @@ const AIChatWidget = () => {
                 </motion.div>
               )}
             </AnimatePresence>
+
+
+              <div ref={scrollRef} />
               </div>
 
               <div className="border-t p-4 bg-background">

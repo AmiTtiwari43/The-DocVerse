@@ -50,7 +50,12 @@ const doctorSchema = new mongoose.Schema({
     city: String,
     state: String,
     zipCode: String,
+    zipCode: String,
     fullAddress: String,
+  },
+  clinicImages: {
+    type: [String],
+    default: [],
   },
   status: {
     type: String,
@@ -64,6 +69,8 @@ const doctorSchema = new mongoose.Schema({
   verificationRequestedAt: {
     type: Date,
   },
+}, {
+  timestamps: true,
 });
 
 const Doctor = mongoose.model('Doctor', doctorSchema);

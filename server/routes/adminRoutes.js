@@ -33,6 +33,8 @@ router.patch('/payments/:id/approve', authMiddleware, requireAdmin, paymentContr
 router.patch('/payments/:id/reject', authMiddleware, requireAdmin, paymentController.adminRejectPayment);
 
 // Reviews
+// Reviews
+router.get('/reviews', authMiddleware, requireAdmin, adminController.getAllReviews);
 router.delete('/reviews/:id', authMiddleware, requireAdmin, adminController.deleteReviewAdmin);
 
 module.exports = router;

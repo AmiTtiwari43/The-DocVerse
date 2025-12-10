@@ -21,17 +21,25 @@ exports.getUPIPaymentDetails = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
-    // Create pending payment record
-    const payment = new Payment({
-      appointmentId: appointment._id,
-      patientId: req.user.id,
-      doctorId: appointment.doctorId._id,
-      amount: appointment.doctorId.fees,
-      status: 'pending',
-      paymentMethod: 'UPI',
-    });
-
-    await payment.save();
+    // Atomic upsert: reuse existing pending payment or create a new one
+    // This prevents duplicate pending entries due to race conditions
+    let payment = await Payment.findOneAndUpdate(
+      {
+        appointmentId: appointment._id,
+        status: 'pending'
+      },
+      {
+        $setOnInsert: {
+          appointmentId: appointment._id,
+          patientId: req.user.id,
+          doctorId: appointment.doctorId._id,
+          amount: appointment.doctorId.fees,
+          status: 'pending',
+          paymentMethod: 'UPI',
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.status(200).json({
       success: true,
@@ -39,7 +47,7 @@ exports.getUPIPaymentDetails = async (req, res) => {
         paymentId: payment._id,
         amount: appointment.doctorId.fees,
         upiId: process.env.UPI_ID || 'tiwari.amit4356-1@oksbi',
-        qrCodeData: `upi://pay?pa=${process.env.UPI_ID || 'tiwari.amit4356-1@oksbi'}&pn=Mediverse&am=${appointment.doctorId.fees}&cu=INR`,
+        qrCodeData: `upi://pay?pa=${process.env.UPI_ID || 'tiwari.amit4356-1@oksbi'}&pn=DocVerse&am=${appointment.doctorId.fees}&cu=INR`,
       },
     });
   } catch (error) {
@@ -62,7 +70,11 @@ exports.confirmUPIPayment = async (req, res) => {
     }
 
     payment.status = 'completed';
-    payment.transactionId = transactionId || `UPI_${Date.now()}`;
+    if (!transactionId || !transactionId.trim()) {
+      return res.status(400).json({ success: false, message: 'Transaction ID is required' });
+    }
+
+    payment.transactionId = transactionId.trim();
     payment.completedAt = new Date();
     await payment.save();
 
@@ -71,6 +83,21 @@ exports.confirmUPIPayment = async (req, res) => {
       appointment.paymentId = payment._id;
       appointment.status = 'confirmed';
       await appointment.save();
+
+      // Send Confirmation Email
+      try {
+        const doctor = await Doctor.findById(appointment.doctorId);
+        const patient = await User.findById(appointment.patientId);
+        if (patient && patient.email) {
+          const emailData = emailTemplates.appointmentConfirmation(appointment, doctor, patient, payment);
+          await emailService.sendEmail({
+            to: patient.email,
+            ...emailData
+          });
+        }
+      } catch (err) {
+        console.error('Error sending confirmation email:', err);
+      }
     }
 
     res.status(200).json({ success: true, data: payment, message: 'Payment confirmed successfully' });
@@ -120,11 +147,13 @@ exports.adminApprovePayment = async (req, res) => {
     if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
 
     payment.adminStatus = 'approved';
-    // If gateway completed, ensure appointment is confirmed
+    
+    // IMPORTANT: We do NOT auto-confirm the appointment status to 'confirmed'.
+    // We only associate the payment. The DOCTOR must accept it.
     if (payment.status === 'completed') {
       const appointment = await Appointment.findById(payment.appointmentId);
       if (appointment) {
-        appointment.status = 'confirmed';
+        // appointment.status = 'confirmed'; // Removed auto-confirm
         appointment.paymentId = payment._id;
         await appointment.save();
       }
@@ -132,96 +161,30 @@ exports.adminApprovePayment = async (req, res) => {
 
     await payment.save();
 
-    // Send approval notification emails
+    // Send notifications for 2-step flow
     try {
       const appointmentDate = payment.appointmentId?.date ? new Date(payment.appointmentId.date).toLocaleDateString() : 'N/A';
       const appointmentSlot = payment.appointmentId?.slot || 'N/A';
       
-      // Email to patient
+      // Email to patient: "Payment Verified, waiting for Doctor"
+      const patientEmailData = emailTemplates.paymentVerifiedPatient(payment, payment.doctorId, payment.patientId);
       await emailService.sendEmail({
         to: payment.patientId?.email,
-        subject: 'Payment Approved - Your Appointment is Confirmed',
-        text: `Payment Approved! Your payment of ₹${payment.amount} has been approved. Appointment with Dr. ${payment.doctorId?.name} on ${appointmentDate} at ${appointmentSlot} at clinic ${payment.doctorId?.address?.fullAddress || 'N/A'} is now confirmed. Transaction ID: ${payment.transactionId || payment._id.toString().slice(-8)}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-              <h2 style="margin: 0;">✓ Payment Approved!</h2>
-            </div>
-            <div style="background: #f5f5f5; padding: 20px; border-radius: 0 0 8px 8px;">
-              <p>Dear ${payment.patientId?.name || 'Patient'},</p>
-              <p>Your payment of <strong style="color: #10B981;">₹${payment.amount}</strong> has been approved by our admin team.</p>
-              
-              <div style="background: white; padding: 15px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 4px;">
-                <h4 style="margin-top: 0; color: #667eea;">📋 Appointment Receipt:</h4>
-                <p><strong>Doctor Name:</strong> Dr. ${payment.doctorId?.name}</p>
-                <p><strong>Specialization:</strong> ${payment.doctorId?.specialization || 'N/A'}</p>
-                <p><strong>📍 Clinic Location:</strong> ${payment.doctorId?.address?.fullAddress || 'N/A'}</p>
-                <p><strong>📅 Appointment Date:</strong> ${appointmentDate}</p>
-                <p><strong>⏰ Appointment Time:</strong> ${appointmentSlot}</p>
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;">
-                <p style="text-align: right; font-weight: bold; font-size: 18px; color: #667eea;">Total Amount Paid: ₹${payment.amount}</p>
-                <p><strong>Transaction ID:</strong> ${payment.transactionId || payment._id.toString().slice(-8)}</p>
-              </div>
-              
-              <p style="background: #FEF3C7; padding: 12px; border-radius: 4px; border-left: 4px solid #F59E0B;">
-                <strong>📌 Important:</strong> Your appointment is now confirmed. Please arrive <strong>5 minutes early</strong>.
-              </p>
-              
-              <p>If you have any questions, please contact us at support@mediverse.com</p>
-              <p style="text-align: center; color: #999; font-size: 12px; margin-top: 30px;">
-                Best regards,<br/>
-                <strong>Mediverse Team</strong>
-              </p>
-            </div>
-          </div>
-        `,
+        ...patientEmailData
       });
 
-      // Email to doctor
+      // Email to doctor: "Action Required"
+      const doctorEmailData = emailTemplates.paymentVerifiedDoctor(payment, payment.doctorId, payment.patientId, appointmentDate, appointmentSlot);
       await emailService.sendEmail({
         to: payment.doctorId?.email,
-        subject: 'New Appointment Confirmed - Payment Verified',
-        text: `New Appointment Confirmed! Patient ${payment.patientId?.name} (${payment.patientId?.email}) has a confirmed appointment on ${appointmentDate} at ${appointmentSlot}. Payment of ₹${payment.amount} has been verified.`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-              <h2 style="margin: 0;">✓ New Appointment Confirmed</h2>
-            </div>
-            <div style="background: #f5f5f5; padding: 20px; border-radius: 0 0 8px 8px;">
-              <p>Dear Dr. ${payment.doctorId?.name},</p>
-              <p>A new appointment has been confirmed for you!</p>
-              
-              <div style="background: white; padding: 15px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 4px;">
-                <h4 style="margin-top: 0; color: #667eea;">📋 Appointment Details & Receipt:</h4>
-                <p><strong>Patient Name:</strong> ${payment.patientId?.name}</p>
-                <p><strong>Patient Email:</strong> ${payment.patientId?.email}</p>
-                <p><strong>📅 Appointment Date:</strong> ${appointmentDate}</p>
-                <p><strong>⏰ Appointment Time:</strong> ${appointmentSlot}</p>
-                <p><strong>📍 Your Clinic Location:</strong> ${payment.doctorId?.address?.fullAddress || 'N/A'}</p>
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 15px 0;">
-                <p><strong>Appointment Fee:</strong> ₹${payment.amount}</p>
-                <p><strong>Payment Status:</strong> <span style="color: #10B981; font-weight: bold;">✓ Verified & Approved</span></p>
-                <p><strong>Transaction ID:</strong> ${payment.transactionId || payment._id.toString().slice(-8)}</p>
-              </div>
-              
-              <p style="background: #DBEAFE; padding: 12px; border-radius: 4px; border-left: 4px solid #3B82F6;">
-                <strong>📌 Note:</strong> The payment has been verified by our admin team. The patient will arrive on the scheduled date and time.
-              </p>
-              
-              <p>If you need to reschedule or have any concerns, please contact us immediately.</p>
-              <p style="text-align: center; color: #999; font-size: 12px; margin-top: 30px;">
-                Best regards,<br/>
-                <strong>Mediverse Team</strong>
-              </p>
-            </div>
-          </div>
-        `,
+        ...doctorEmailData
       });
+
     } catch (emailErr) {
       console.error('Error sending approval emails:', emailErr);
     }
 
-    res.status(200).json({ success: true, data: payment, message: 'Payment approved by admin' });
+    res.status(200).json({ success: true, data: payment, message: 'Payment approved. Emails sent to patient and doctor.' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -260,7 +223,7 @@ exports.adminRejectPayment = async (req, res) => {
       await emailService.sendEmail({
         to: payment.patientId?.email,
         subject: 'Payment Rejected - Appointment Cancelled',
-        text: `Your payment for the appointment with Dr. ${payment.doctorId?.name} has been rejected. The appointment has been cancelled. Please contact support@mediverse.com for assistance.`,
+        text: `Your payment for the appointment with Dr. ${payment.doctorId?.name} has been rejected. The appointment has been cancelled. Please contact support@docverse.com for assistance.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -283,10 +246,10 @@ exports.adminRejectPayment = async (req, res) => {
                 <strong>📌 Next Steps:</strong> Please verify your payment details and try booking again, or contact our support team.
               </p>
               
-              <p>For assistance, please reach out to us at <strong>support@mediverse.com</strong></p>
+              <p>For assistance, please reach out to us at <strong>support@docverse.com</strong></p>
               <p style="text-align: center; color: #999; font-size: 12px; margin-top: 30px;">
                 Best regards,<br/>
-                <strong>Mediverse Team</strong>
+                <strong>THE DocVerse Team</strong>
               </p>
             </div>
           </div>
@@ -323,7 +286,7 @@ exports.adminRejectPayment = async (req, res) => {
               
               <p style="text-align: center; color: #999; font-size: 12px; margin-top: 30px;">
                 Best regards,<br/>
-                <strong>Mediverse Team</strong>
+                <strong>THE DocVerse Team</strong>
               </p>
             </div>
           </div>

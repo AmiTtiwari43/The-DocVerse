@@ -16,7 +16,15 @@ const recalculateDoctorRating = async (doctorId) => {
 // Add review
 exports.addReview = async (req, res) => {
   try {
-    const { doctorId, rating, comment } = req.body;
+    const { 
+      doctorId, 
+      rating, 
+      comment,
+      title,
+      isAnonymous,
+      isRecommended,
+      detailedRatings 
+    } = req.body;
 
     // Validation
     if (!doctorId || !rating || !comment) {
@@ -43,32 +51,31 @@ exports.addReview = async (req, res) => {
         });
     }
 
-    // Check if already reviewed
-    const existingReview = await Review.findOne({
+    // Check number of reviews by this user for this doctor
+    const existingReviews = await Review.find({
       doctorId,
       patientId: req.user.id,
     });
 
-    if (existingReview) {
-      // Update existing review
-      existingReview.rating = rating;
-      existingReview.comment = comment;
-      await existingReview.save();
-
-      return res
-        .status(200)
-        .json({
-          success: true,
-          data: existingReview,
-          message: 'Review updated successfully',
-        });
+    if (existingReviews.length >= 3) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'You can only review a doctor up to 3 times' 
+      });
     }
+
+    // Create new review (do not update existing)
+
 
     const review = new Review({
       doctorId,
       patientId: req.user.id,
       rating,
       comment,
+      title,
+      isAnonymous,
+      isRecommended,
+      detailedRatings,
     });
 
     await review.save();
@@ -99,6 +106,7 @@ exports.getReviewsByPatient = async (req, res) => {
   try {
     const reviews = await Review.find({ patientId: req.user.id })
       .populate('doctorId', 'name specialization')
+      .populate('userReplies.userId', 'name')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -114,10 +122,26 @@ exports.getReviewsByPatient = async (req, res) => {
 exports.getReviewsByDoctor = async (req, res) => {
   try {
     const { doctorId } = req.params;
+    const { sortBy, rating } = req.query;
 
-    const reviews = await Review.find({ doctorId })
+    const query = { doctorId };
+    if (rating && rating !== 'all') {
+      query.rating = parseInt(rating);
+    }
+
+    let sortOption = { createdAt: -1 }; // Default: Newest first
+    if (sortBy === 'oldest') {
+      sortOption = { createdAt: 1 };
+    } else if (sortBy === 'highest') {
+      sortOption = { rating: -1 };
+    } else if (sortBy === 'lowest') {
+      sortOption = { rating: 1 };
+    }
+
+    const reviews = await Review.find(query)
       .populate('patientId', 'name')
-      .sort({ createdAt: -1 });
+      .populate('userReplies.userId', 'name')
+      .sort(sortOption);
 
     // Calculate average rating
     const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
@@ -140,7 +164,8 @@ exports.deleteReview = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Review not found' });
     }
 
-    if (review.patientId.toString() !== req.user.id) {
+    // Check if user is the review author OR Admin
+    if (review.patientId.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -239,7 +264,7 @@ exports.addDoctorReply = async (req, res) => {
 exports.addUserReply = async (req, res) => {
   try {
     const { reviewId } = req.params;
-    const { reply } = req.body;
+    const { reply, parentId } = req.body;
 
     if (!reply) {
       return res.status(400).json({ success: false, message: 'Reply is required' });
@@ -255,10 +280,14 @@ exports.addUserReply = async (req, res) => {
     review.userReplies.push({
       userId: req.user.id,
       reply,
+      parentId: parentId || null,
       replyDate: new Date(),
     });
 
     await review.save();
+    
+    // Populate user details for the response
+    await review.populate('userReplies.userId', 'name');
 
     // Notify original reviewer if not the same person
     if (review.patientId.toString() !== req.user.id) {
@@ -366,6 +395,201 @@ exports.unlikeReview = async (req, res) => {
       data: review,
       message: 'Like removed successfully',
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+// Delete doctor reply
+exports.deleteDoctorReply = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const review = await Review.findById(reviewId);
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    // Check if user is the doctor OR Admin
+    let isDoctor = false;
+    const doctor = await Doctor.findOne({ userId: req.user.id });
+    if (doctor && review.doctorId.toString() === doctor._id.toString()) {
+        isDoctor = true;
+    }
+
+    if (!isDoctor && req.user.role !== 'admin') {
+       return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    review.doctorReply = undefined;
+    review.replyDate = undefined;
+    await review.save();
+
+    res.status(200).json({
+      success: true,
+      data: review,
+      message: 'Reply deleted successfully',
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete user reply
+exports.deleteUserReply = async (req, res) => {
+  try {
+    const { reviewId, replyId } = req.params;
+    const review = await Review.findById(reviewId);
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    // Find the reply
+    const replyIndex = review.userReplies.findIndex(
+      (r) => r._id.toString() === replyId
+    );
+
+    if (replyIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    // Check ownership: Allow reply author OR Admin
+    const isReplyAuthor = review.userReplies[replyIndex].userId.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isReplyAuthor && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    // Helper to find all descendants
+    const getDescendantIds = (parentId, allReplies) => {
+      let descendants = [];
+      const children = allReplies.filter(
+        (r) => r.parentId && r.parentId.toString() === parentId.toString()
+      );
+      
+      children.forEach(child => {
+        descendants.push(child._id);
+        descendants = [...descendants, ...getDescendantIds(child._id, allReplies)];
+      });
+      
+      return descendants;
+    };
+
+    const replyIdToDelete = review.userReplies[replyIndex]._id;
+    const idsToDelete = [
+      replyIdToDelete,
+      ...getDescendantIds(replyIdToDelete, review.userReplies)
+    ];
+
+    // Filter out the deleted replies
+    review.userReplies = review.userReplies.filter(
+      (r) => !idsToDelete.some((id) => id.toString() === r._id.toString())
+    );
+
+    await review.save();
+    
+    // Populate user details for the response
+    await review.populate('userReplies.userId', 'name');
+
+    res.status(200).json({
+      success: true,
+      data: review,
+      message: 'Reply deleted successfully',
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+// Like doctor reply
+exports.likeDoctorReply = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const review = await Review.findById(reviewId);
+
+    if (!review || !review.doctorReply) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    if (review.doctorReplyLikes.includes(req.user.id)) {
+      return res.status(400).json({ success: false, message: 'You already liked this reply' });
+    }
+
+    review.doctorReplyLikes.push(req.user.id);
+    await review.save();
+
+    res.status(200).json({ success: true, data: review, message: 'Reply liked' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Unlike doctor reply
+exports.unlikeDoctorReply = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const review = await Review.findById(reviewId);
+
+    if (!review || !review.doctorReply) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    review.doctorReplyLikes = review.doctorReplyLikes.filter(id => id.toString() !== req.user.id);
+    await review.save();
+
+    res.status(200).json({ success: true, data: review, message: 'Like removed' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Like user reply
+exports.likeUserReply = async (req, res) => {
+  try {
+    const { reviewId, replyId } = req.params;
+    const review = await Review.findById(reviewId);
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    const reply = review.userReplies.id(replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    if (reply.likes.includes(req.user.id)) {
+      return res.status(400).json({ success: false, message: 'You already liked this reply' });
+    }
+
+    reply.likes.push(req.user.id);
+    await review.save();
+
+    res.status(200).json({ success: true, data: review, message: 'Reply liked' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Unlike user reply
+exports.unlikeUserReply = async (req, res) => {
+  try {
+    const { reviewId, replyId } = req.params;
+    const review = await Review.findById(reviewId);
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+
+    const reply = review.userReplies.id(replyId);
+    if (!reply) {
+      return res.status(404).json({ success: false, message: 'Reply not found' });
+    }
+
+    reply.likes = reply.likes.filter(id => id.toString() !== req.user.id);
+    await review.save();
+
+    res.status(200).json({ success: true, data: review, message: 'Like removed' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

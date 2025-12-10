@@ -7,7 +7,53 @@ import { Input } from '../components/ui/input';
 import { useToast } from '../components/ui/use-toast';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Stethoscope } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
+import api from '../utils/api';
 import { motion } from 'framer-motion';
+
+const GoogleLoginWrapper = () => {
+    const { toast } = useToast();
+    const navigate = useNavigate();
+    // Use context? login method in context likely handles email/pass. 
+    // We need a way to update global auth state after google success.
+    const { setUser } = useAppContext();
+
+    const handleSuccess = async (credentialResponse) => {
+        try {
+            const res = await api.post('/auth/google', { token: credentialResponse.credential });
+            if (res.data.success) {
+                 toast({
+                    variant: "success",
+                    title: "Logged in with Google!",
+                    description: "Welcome back!",
+                });
+                // Manually update context since we bypassed specific context login fn
+                setUser(res.data.data);
+                navigate('/dashboard');
+                // Force reload to ensure context sync if needed, though setting state should work
+                // window.location.reload(); 
+            }
+        } catch (err) {
+            console.error("Google Login Error", err);
+            toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: err.response?.data?.message || "Google Login Failed",
+            });
+        }
+    };
+
+    return (
+        <GoogleLogin
+            onSuccess={handleSuccess}
+            onError={() => {
+                console.log('Login Failed');
+                toast({ variant: "destructive", title: "Login Failed", description: "Google Login Failed" });
+            }}
+            useOneTap
+        />
+    );
+};
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -107,6 +153,21 @@ const Login = () => {
                   {loading ? 'Logging in...' : 'Login'}
                 </Button>
               </motion.div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                  <GoogleLoginWrapper />
+              </div>
             </form>
 
             <div className="mt-6 text-center text-sm">

@@ -14,6 +14,7 @@ import {
   MessageCircle,
   HeadphonesIcon
 } from 'lucide-react';
+import api from '../utils/api';
 
 const ContactUs = () => {
   const { toast } = useToast();
@@ -33,25 +34,32 @@ const ContactUs = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      await api.post('/users/contact', formData);
       toast({
         variant: "success",
         title: "Message Sent!",
         description: "We'll get back to you within 24 hours.",
       });
       setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.response?.data?.message || "Failed to send message. Please try again.",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const contactInfo = [
     {
       icon: Mail,
       title: 'Email Us',
-      content: 'support@mediverse.com',
+      content: 'support@docverse.com',
       description: 'Send us an email anytime',
-      link: 'mailto:support@mediverse.com'
+      link: 'mailto:support@docverse.com'
     },
     {
       icon: Phone,

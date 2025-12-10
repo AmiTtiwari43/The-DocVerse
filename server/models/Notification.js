@@ -8,7 +8,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['profile_verified', 'profile_rejected', 'new_review', 'appointment_confirmed', 'appointment_cancelled', 'review_reply'],
+    enum: ['profile_verified', 'profile_rejected', 'new_review', 'appointment_confirmed', 'appointment_cancelled', 'review_reply', 'user_reply', 'doctor_reply'],
     required: true,
   },
   message: {

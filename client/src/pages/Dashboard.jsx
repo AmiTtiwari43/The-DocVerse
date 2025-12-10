@@ -2,6 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -16,8 +27,10 @@ import AppointmentCard from '../components/AppointmentCard';
 import api from '../utils/api';
 import {
   Calendar,
+  CalendarCheck,
   Star,
   Users,
+  ChevronDown,
   CheckCircle,
   XCircle,
   Clock,
@@ -65,6 +78,12 @@ ChartJS.register(
   Filler,
   ArcElement
 );
+
+const SPECIALIZATIONS = [
+  'General Physician', 'Cardiologist', 'Dermatologist', 'Neurologist', 
+  'Orthopedist', 'Pediatrician', 'Psychiatrist', 'Dentist',
+  'Ophthalmologist', 'Gynecologist', 'Urologist', 'ENT Specialist'
+];
 
 const Dashboard = () => {
   const { user } = useAppContext();
@@ -178,12 +197,13 @@ const Dashboard = () => {
   const fetchAdminData = async () => {
     setAdminLoading(true);
     try {
-      const [usersRes, pendingRes, appRes, paymentsRes, analyticsRes] = await Promise.all([
+      const [usersRes, pendingRes, appRes, paymentsRes, analyticsRes, reviewsRes] = await Promise.all([
         api.get('/admin/users'),
         api.get('/admin/doctors/pending'),
         api.get('/admin/appointments'),
         api.get('/admin/payments').catch(() => ({ data: { data: [] } })),
-        api.get('/analytics/admin').catch(() => ({ data: { data: null } }))
+        api.get('/analytics/admin').catch(() => ({ data: { data: null } })),
+        api.get('/admin/reviews').catch(() => ({ data: { data: [] } }))
       ]);
       
       // Separate doctors and patients
@@ -191,8 +211,7 @@ const Dashboard = () => {
       const doctors = allUsers.filter(u => u.role === 'doctor');
       const patients = allUsers.filter(u => u.role === 'patient');
       
-      // Reviews endpoint is not available on backend; use empty array to avoid 404 noise
-      const allReviews = [];
+      const allReviews = reviewsRes.data.data || [];
 
       // Build fallback analytics if analytics endpoint didn't return data
       const rawAnalytics = analyticsRes?.data?.data;
@@ -357,7 +376,7 @@ const Dashboard = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: 'Error updating appointment',
+        description: error.response?.data?.message || 'Error updating appointment',
       });
     }
   };
@@ -377,7 +396,7 @@ const Dashboard = () => {
       toast({
         variant: "destructive",
         title: "Error",
-        description: 'Error completing appointment',
+        description: error.response?.data?.message || 'Error completing appointment',
       });
     }
   };
@@ -616,12 +635,21 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <label className="text-sm font-medium mb-2 block">Specialization</label>
-                          <Input
-                            name="specialization"
+                          <Select
                             value={profileData.specialization}
-                            onChange={(e) => setProfileData({ ...profileData, specialization: e.target.value })}
-                            required
-                          />
+                            onValueChange={(value) => setProfileData({ ...profileData, specialization: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select specialization" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SPECIALIZATIONS.map((spec) => (
+                                <SelectItem key={spec} value={spec}>
+                                  {spec}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <label className="text-sm font-medium mb-2 block">Experience (years)</label>
@@ -814,8 +842,9 @@ const Dashboard = () => {
             <TabsContent value="stats" className="space-y-4">
               {doctorStats && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
+                      { title: "Total Revenue", value: `₹${doctorStats.totalRevenue || 0}`, icon: DollarSign, color: "text-green-600" },
                       { title: "Total Reviews", value: doctorStats.totalReviews, icon: MessageSquare, color: "text-primary" },
                       { title: "Average Rating", value: doctorStats.avgRating.toFixed(1), icon: Star, color: "text-yellow-500", showStar: true },
                       { title: "Total Appointments", value: doctorStats.totalAppointments, icon: Calendar, color: "text-accent" },
@@ -835,7 +864,7 @@ const Dashboard = () => {
                             </div>
                           </CardHeader>
                           <CardContent>
-                            <div className={`text-3xl font-bold ${stat.color} flex items-center gap-2 mb-2`}>
+                            <div className={`text-2xl font-bold ${stat.color} flex items-center gap-2 mb-2`}>
                               {stat.value}
                               {stat.showStar && <Star className="h-6 w-6 fill-yellow-400 text-yellow-400" />}
                             </div>
@@ -861,34 +890,79 @@ const Dashboard = () => {
                       </motion.div>
                     ))}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      { title: "Pending", value: doctorStats.pendingAppointments, color: "text-orange-500" },
-                      { title: "Completed", value: doctorStats.completedAppointments, color: "text-green-500" },
-                    ].map((stat, index) => (
-                      <motion.div
-                        key={stat.title}
-                        initial={{ opacity: 0, x: index === 0 ? -20 : 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3 + index * 0.1, duration: 0.5 }}
-                        whileHover={{ y: -5, scale: 1.02 }}
-                      >
-                        <Card className="border-2 premium-shadow card-hover">
-                          <CardHeader>
-                            <CardTitle className="text-lg">{stat.title}</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className={`text-2xl font-bold ${stat.color} mb-2`}>{stat.value}</div>
-                            {doctorStats.totalAppointments > 0 && (
-                              <Progress 
-                                value={(stat.value / doctorStats.totalAppointments) * 100} 
-                                className="h-2"
-                              />
-                            )}
-                          </CardContent>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {/* Status Cards */}
+                     <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { title: "Pending", value: doctorStats.pendingAppointments, color: "text-orange-500" },
+                        { title: "Completed", value: doctorStats.completedAppointments, color: "text-green-500" },
+                      ].map((stat, index) => (
+                        <motion.div
+                          key={stat.title}
+                          initial={{ opacity: 0, x: index === 0 ? -20 : 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.3 + index * 0.1, duration: 0.5 }}
+                          whileHover={{ y: -5, scale: 1.02 }}
+                        >
+                          <Card className="border-2 premium-shadow card-hover h-full">
+                            <CardHeader>
+                              <CardTitle className="text-lg">{stat.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className={`text-2xl font-bold ${stat.color} mb-2`}>{stat.value}</div>
+                              {doctorStats.totalAppointments > 0 && (
+                                <Progress 
+                                  value={(stat.value / doctorStats.totalAppointments) * 100} 
+                                  className="h-2"
+                                />
+                              )}
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                     </div>
+                     
+                     {/* Revenue Chart */}
+                     <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.4, duration: 0.5 }}
+                     >
+                        <Card className="border-2 premium-shadow h-full">
+                            <CardHeader>
+                                <CardTitle>Revenue Trend</CardTitle>
+                                <CardDescription>Last 6 months earnings</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="h-[200px] w-full">
+                                    {doctorStats.monthlyRevenue ? (
+                                        <Bar
+                                            data={{
+                                                labels: doctorStats.monthlyRevenue.map(d => d.month),
+                                                datasets: [{
+                                                    label: 'Revenue',
+                                                    data: doctorStats.monthlyRevenue.map(d => d.revenue),
+                                                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                                                    borderRadius: 4,
+                                                }]
+                                            }}
+                                            options={{
+                                                responsive: true,
+                                                maintainAspectRatio: false,
+                                                plugins: { legend: { display: false } },
+                                                scales: { y: { beginAtZero: true } }
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                                            No revenue data available
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
                         </Card>
-                      </motion.div>
-                    ))}
+                     </motion.div>
                   </div>
                 </>
               )}
@@ -1580,56 +1654,92 @@ const Dashboard = () => {
                                 </div>
                                 {payment.adminStatus === 'pending' && (
                                   <div className="flex gap-2 mt-2">
-                                    <Button
-                                      size="sm"
-                                      variant="default"
-                                      onClick={() => {
-                                        if (window.confirm('Approve this payment?')) {
-                                          api.patch(`/admin/payments/${payment._id}/approve`).then(() => {
-                                            toast({
-                                              variant: "success",
-                                              title: "Payment Approved",
-                                              description: "Payment has been approved successfully",
-                                            });
-                                            fetchAdminData();
-                                          }).catch(err => {
-                                            toast({
-                                              variant: "destructive",
-                                              title: "Error",
-                                              description: err.response?.data?.message || "Failed to approve payment",
-                                            });
-                                          });
-                                        }
-                                      }}
-                                    >
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Approve
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => {
-                                        if (window.confirm('Reject this payment?')) {
-                                          api.patch(`/admin/payments/${payment._id}/reject`).then(() => {
-                                            toast({
-                                              variant: "success",
-                                              title: "Payment Rejected",
-                                              description: "Payment has been rejected",
-                                            });
-                                            fetchAdminData();
-                                          }).catch(err => {
-                                            toast({
-                                              variant: "destructive",
-                                              title: "Error",
-                                              description: err.response?.data?.message || "Failed to reject payment",
-                                            });
-                                          });
-                                        }
-                                      }}
-                                    >
-                                      <XCircle className="h-3 w-3 mr-1" />
-                                      Reject
-                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="default"
+                                        >
+                                          <CheckCircle className="h-3 w-3 mr-1" />
+                                          Approve
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Approve Payment?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This will confirm the appointment and send a confirmation email to the patient.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() => {
+                                              api.patch(`/admin/payments/${payment._id}/approve`).then(() => {
+                                                toast({
+                                                  variant: "success",
+                                                  title: "Payment Approved",
+                                                  description: "Payment has been approved successfully",
+                                                });
+                                                fetchAdminData();
+                                              }).catch(err => {
+                                                toast({
+                                                  variant: "destructive",
+                                                  title: "Error",
+                                                  description: err.response?.data?.message || "Failed to approve payment",
+                                                });
+                                              });
+                                            }}
+                                          >
+                                            Approve
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                        >
+                                          <XCircle className="h-3 w-3 mr-1" />
+                                          Reject
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Reject Payment?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This will cancel the appointment and notify the patient. This action cannot be undone.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            onClick={() => {
+                                              api.patch(`/admin/payments/${payment._id}/reject`).then(() => {
+                                                toast({
+                                                  variant: "success",
+                                                  title: "Payment Rejected",
+                                                  description: "Payment has been rejected",
+                                                });
+                                                fetchAdminData();
+                                              }).catch(err => {
+                                                toast({
+                                                  variant: "destructive",
+                                                  title: "Error",
+                                                  description: err.response?.data?.message || "Failed to reject payment",
+                                                });
+                                              });
+                                            }}
+                                          >
+                                            Reject
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
                                   </div>
                                 )}
                               </div>
@@ -1663,62 +1773,111 @@ const Dashboard = () => {
                   <CardDescription>Moderate user reviews</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {adminData.reviews.length > 0 ? (
-                      adminData.reviews.map((review) => (
-                        <Card key={review._id} className="border">
-                          <CardContent className="pt-4">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <p className="font-semibold">{review.patientId?.name || 'Anonymous'}</p>
+                      Object.values(adminData.reviews.reduce((acc, review) => {
+                        const docId = review.doctorId?._id || 'unknown';
+                        if (!acc[docId]) {
+                          acc[docId] = {
+                            id: docId,
+                            name: review.doctorId?.name || 'Unknown Doctor',
+                            specialization: review.doctorId?.specialization || 'General',
+                            reviews: [],
+                            avgRating: 0
+                          };
+                        }
+                        acc[docId].reviews.push(review);
+                        acc[docId].avgRating = acc[docId].reviews.reduce((sum, r) => sum + r.rating, 0) / acc[docId].reviews.length;
+                        return acc;
+                      }, {})).map((doctorGroup) => (
+                        <Card key={doctorGroup.id} className="border-2 overflow-hidden">
+                          <div 
+                            className="p-4 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors flex items-center justify-between"
+                            onClick={(e) => {
+                              const content = e.currentTarget.nextElementSibling;
+                              content.classList.toggle('hidden');
+                              e.currentTarget.querySelector('.chevron').classList.toggle('rotate-180');
+                            }}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <UserCheck className="h-5 w-5 text-primary" />
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-lg">{doctorGroup.name}</h3>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <span>{doctorGroup.specialization}</span>
+                                  <span>•</span>
                                   <div className="flex items-center gap-1">
-                                    {[...Array(5)].map((_, i) => (
-                                      <Star
-                                        key={i}
-                                        className={`h-3 w-3 ${
-                                          i < review.rating
-                                            ? 'fill-yellow-400 text-yellow-400'
-                                            : 'fill-gray-300 text-gray-300'
-                                        }`}
-                                      />
-                                    ))}
+                                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                    <span className="font-medium text-foreground">{doctorGroup.avgRating.toFixed(1)}</span>
+                                    <span>({doctorGroup.reviews.length} reviews)</span>
                                   </div>
                                 </div>
-                                <p className="text-sm text-muted-foreground mb-1">
-                                  For: Dr. {review.doctorId?.name || 'Unknown'}
-                                </p>
-                                <p className="text-sm">{review.comment}</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {new Date(review.createdAt).toLocaleDateString()}
-                                </p>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => {
-                                  if (window.confirm('Delete this review?')) {
-                                    api.delete(`/admin/reviews/${review._id}`).then(() => {
-                                      toast({
-                                        variant: "success",
-                                        title: "Success",
-                                        description: "Review deleted",
-                                      });
-                                      fetchAdminData();
-                                    }).catch(err => {
-                                      toast({
-                                        variant: "destructive",
-                                        title: "Error",
-                                        description: "Failed to delete review",
-                                      });
-                                    });
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
                             </div>
-                          </CardContent>
+                            <Button variant="ghost" size="sm" className="chevron transition-transform duration-200">
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          <div className="hidden border-t bg-background">
+                            <div className="p-4 space-y-3">
+                              {doctorGroup.reviews.map((review) => (
+                                <div key={review._id} className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <p className="font-semibold text-sm">{review.patientId?.name || 'Anonymous'}</p>
+                                        <div className="flex items-center gap-0.5">
+                                          {[...Array(5)].map((_, i) => (
+                                            <Star
+                                              key={i}
+                                              className={`h-3 w-3 ${
+                                                i < review.rating
+                                                  ? 'fill-yellow-400 text-yellow-400'
+                                                  : 'fill-gray-300 text-gray-300'
+                                              }`}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <p className="text-sm">{review.comment}</p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {new Date(review.createdAt).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="h-8 w-8 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm('Delete this review?')) {
+                                          api.delete(`/admin/reviews/${review._id}`).then(() => {
+                                            toast({
+                                              variant: "success",
+                                              title: "Success",
+                                              description: "Review deleted",
+                                            });
+                                            fetchAdminData();
+                                          }).catch(err => {
+                                            toast({
+                                              variant: "destructive",
+                                              title: "Error",
+                                              description: "Failed to delete review",
+                                            });
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </Card>
                       ))
                     ) : (
@@ -1730,6 +1889,52 @@ const Dashboard = () => {
             </TabsContent>
 
             <TabsContent value="appointments" className="space-y-4">
+              {/* Appointment Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-blue-50 border-blue-100">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-600">Total</p>
+                      <p className="text-2xl font-bold text-blue-700">{adminData.allAppointments.length}</p>
+                    </div>
+                    <Calendar className="h-8 w-8 text-blue-200" />
+                  </CardContent>
+                </Card>
+                <Card className="bg-green-50 border-green-100">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-600">Completed</p>
+                      <p className="text-2xl font-bold text-green-700">
+                        {adminData.allAppointments.filter(a => a.status === 'completed').length}
+                      </p>
+                    </div>
+                    <CheckCircle className="h-8 w-8 text-green-200" />
+                  </CardContent>
+                </Card>
+                <Card className="bg-orange-50 border-orange-100">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-orange-600">Active</p>
+                      <p className="text-2xl font-bold text-orange-700">
+                        {adminData.allAppointments.filter(a => ['pending', 'confirmed'].includes(a.status)).length}
+                      </p>
+                    </div>
+                    <Clock className="h-8 w-8 text-orange-200" />
+                  </CardContent>
+                </Card>
+                <Card className="bg-red-50 border-red-100">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-red-600">Cancelled</p>
+                      <p className="text-2xl font-bold text-red-700">
+                        {adminData.allAppointments.filter(a => ['cancelled', 'rejected'].includes(a.status)).length}
+                      </p>
+                    </div>
+                    <XCircle className="h-8 w-8 text-red-200" />
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card>
                 <CardHeader>
                   <CardTitle>All Appointments</CardTitle>
@@ -1739,17 +1944,46 @@ const Dashboard = () => {
                   {adminData.allAppointments.length > 0 ? (
                     <div className="space-y-4">
                       {adminData.allAppointments.map((apt) => (
-                        <Card key={apt._id}>
+                        <Card key={apt._id} className="border hover:shadow-md transition-shadow">
                           <CardContent className="pt-6">
                             <div className="flex items-start justify-between">
-                              <div>
-                                <p className="font-semibold">Dr. {apt.doctorId?.name}</p>
-                                <p className="text-sm text-muted-foreground">{apt.doctorId?.specialization}</p>
-                                <p className="text-sm mt-2">Patient: {apt.patientId?.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {new Date(apt.date).toLocaleDateString()} - {apt.slot}
-                                </p>
-                                <Badge className="mt-2">{apt.status}</Badge>
+                              <div className="flex gap-4">
+                                <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 ${
+                                  apt.status === 'completed' ? 'bg-green-100 text-green-600' :
+                                  apt.status === 'confirmed' ? 'bg-blue-100 text-blue-600' :
+                                  apt.status === 'cancelled' || apt.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                                  'bg-orange-100 text-orange-600'
+                                }`}>
+                                  {apt.status === 'completed' ? <CheckCircle className="h-6 w-6" /> :
+                                   apt.status === 'confirmed' ? <CalendarCheck className="h-6 w-6" /> :
+                                   apt.status === 'cancelled' || apt.status === 'rejected' ? <XCircle className="h-6 w-6" /> :
+                                   <Clock className="h-6 w-6" />}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-semibold text-lg">Dr. {apt.doctorId?.name}</p>
+                                    <Badge variant={
+                                      apt.status === 'completed' ? 'success' :
+                                      apt.status === 'confirmed' ? 'default' :
+                                      apt.status === 'cancelled' || apt.status === 'rejected' ? 'destructive' :
+                                      'warning'
+                                    } className="capitalize flex items-center gap-1">
+                                      {apt.status === 'completed' && <CheckCircle className="h-3 w-3" />}
+                                      {apt.status}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{apt.doctorId?.specialization}</p>
+                                  <div className="mt-2 text-sm">
+                                    <span className="text-muted-foreground">Patient:</span> <span className="font-medium">{apt.patientId?.name}</span>
+                                  </div>
+                                  <div className="text-sm flex items-center gap-2 mt-1 text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(apt.date).toLocaleDateString()}
+                                    <span className="mx-1">•</span>
+                                    <Clock className="h-3 w-3" />
+                                    {apt.slot}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </CardContent>

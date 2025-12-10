@@ -180,7 +180,7 @@ const Home = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-3 text-gradient">Why Choose Mediverse?</h2>
+            <h2 className="text-4xl md:text-5xl font-bold mb-3 text-gradient">Why Choose THE DocVerse?</h2>
             <p className="text-muted-foreground text-lg">
               Everything you need for seamless healthcare management
             </p>
@@ -313,7 +313,7 @@ const Home = () => {
               viewport={{ once: true }}
               transition={{ delay: 0.3, duration: 0.6 }}
             >
-              Join thousands of patients who trust Mediverse for their healthcare needs
+              Join thousands of patients who trust THE DocVerse for their healthcare needs
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
