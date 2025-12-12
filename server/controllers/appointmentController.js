@@ -98,6 +98,7 @@ exports.getAppointmentsByUser = async (req, res) => {
     const appointments = await Appointment.find(filter)
       .populate('doctorId', 'name specialization city fees')
       .populate('patientId', 'name email phone')
+      .populate('paymentId') // Populate payment info to check adminStatus
       .sort({ date: -1, createdAt: -1 });
 
     res.status(200).json({ success: true, data: appointments });
@@ -378,13 +379,10 @@ exports.rescheduleAppointment = async (req, res) => {
     const userToNotify = await User.findById(isDoctor ? appointment.patientId._id : appointment.doctorId.userId);
     if (userToNotify && userToNotify.email) {
       // Fetch payment details for the receipt
-      const Payment = require('../models/Payment');
-      const payment = await Payment.findOne({ appointmentId: appointment._id });
-
-      const emailData = emailTemplates.appointmentConfirmation(appointment, appointment.doctorId, userToNotify, payment);
+      const emailData = emailTemplates.appointmentRescheduled(appointment, appointment.doctorId, userToNotify);
       await sendEmail({
         to: userToNotify.email,
-        subject: 'Appointment Rescheduled',
+        subject: 'Booking Update: Appointment Rescheduled - THE DocVerse',
         ...emailData,
       });
     }

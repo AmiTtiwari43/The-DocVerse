@@ -127,7 +127,7 @@ exports.adminGetPayments = async (req, res) => {
       .populate('appointmentId')
       .populate('patientId', 'name email')
       .populate('doctorId', 'name specialization')
-      .sort({ updatedAt: -1 });
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: payments });
   } catch (error) {
@@ -174,9 +174,10 @@ exports.adminApprovePayment = async (req, res) => {
       });
 
       // Email to doctor: "Action Required"
+      const doctorEmail = payment.doctorId?.userId?.email;
       const doctorEmailData = emailTemplates.paymentVerifiedDoctor(payment, payment.doctorId, payment.patientId, appointmentDate, appointmentSlot);
       await sendEmail({
-        to: payment.doctorId?.email,
+        to: doctorEmail,
         ...doctorEmailData
       });
 

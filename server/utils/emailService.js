@@ -253,24 +253,112 @@ const emailTemplates = {
   }),
 
   paymentVerifiedPatient: (payment, doctor, patient) => ({
-    subject: 'Payment Verified - Waiting for Doctor Confirmation',
+    subject: `Payment Receipt - Transaction ID: ${payment.transactionId || payment._id.toString().slice(-8).toUpperCase()}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #10B981; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-          <h2 style="margin: 0;">✓ Payment Verified</h2>
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Payment Receipt</h1>
+          <p style="margin: 10px 0 0; opacity: 0.9;">Payment Verified Successfully</p>
         </div>
-        <div style="background: #f5f5f5; padding: 20px; border-radius: 0 0 8px 8px;">
-          <p>Dear ${patient.name},</p>
-          <p>Your payment of <strong>₹${payment.amount}</strong> has been successfully verified by our admin team.</p>
-          <div style="background: white; padding: 15px; border-radius: 4px; margin: 15px 0;">
-             <p><strong>Appointment with:</strong> Dr. ${doctor.name}</p>
-             <p><strong>Status:</strong> <span style="color: #F59E0B; font-weight: bold;">Waiting for Doctor Confirmation</span></p>
+        
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <p style="font-size: 14px; color: #666; margin-bottom: 5px;">Total Paid</p>
+            <h2 style="font-size: 36px; color: #10B981; margin: 0;">₹${payment.amount}</h2>
+            <div style="background: #ECFDF5; color: #059669; display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-top: 10px; font-weight: 600;">
+              Verified by Admin
+            </div>
           </div>
-          <p>We have notified Dr. ${doctor.name}. You will receive another email once the doctor confirms the appointment slot.</p>
+
+          <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: #6B7280; font-size: 14px;">Transaction ID</span>
+              <span style="font-weight: 600; font-family: monospace;">${payment.transactionId || payment._id.toString().slice(-8).toUpperCase()}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: #6B7280; font-size: 14px;">Date</span>
+              <span style="font-weight: 600;">${new Date().toLocaleDateString()}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #6B7280; font-size: 14px;">Payment Method</span>
+              <span style="font-weight: 600;">${payment.paymentMethod.toUpperCase()}</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 25px;">
+            <h3 style="color: #1f2937; margin-top: 0; font-size: 16px; border-bottom: 1px solid #E5E7EB; padding-bottom: 10px;">Appointment Details</h3>
+            <div style="margin-top: 15px;">
+              <p style="margin: 5px 0;"><strong>Doctor:</strong> Dr. ${doctor.name}</p>
+              <p style="margin: 5px 0; color: #666;">${doctor.specialization}</p>
+              <p style="margin: 15px 0 5px;"><strong>Status:</strong> <span style="color: #F59E0B; font-weight: bold;">Waiting for Doctor Confirmation</span></p>
+              <p style="font-size: 13px; color: #6B7280; margin: 0;">We have notified Dr. ${doctor.name}. You will receive a final confirmation email shortly.</p>
+            </div>
+          </div>
+
+          <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 30px;">
+            This is a system generated receipt.
+          </p>
         </div>
       </div>
     `,
-    text: `Payment verified for amount ₹${payment.amount}. Waiting for confirmation from Dr. ${doctor.name}.`,
+    text: `Payment Receipt\n\nTransaction ID: ${payment.transactionId}\nAmount: ₹${payment.amount}\nStatus: Verified, Waiting for Doctor Confirmation`,
+  }),
+
+  appointmentRescheduled: (appointment, doctor, patient) => ({
+    subject: 'Booking Update: Appointment Rescheduled - THE DocVerse',
+    html: `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="margin: 0; font-size: 24px;">Booking Update</h1>
+          <p style="margin: 10px 0 0; opacity: 0.9;">Your appointment has been rescheduled</p>
+        </div>
+        
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+          
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: #EFF6FF; border: 1px solid #DBEAFE; padding: 15px; border-radius: 8px;">
+               <p style="margin: 0; color: #1E40AF; font-weight: 500;">Please note the new time for your appointment</p>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 30px;">
+             <h3 style="color: #1f2937; margin-top: 0; font-size: 16px;">New Appointment Details</h3>
+             <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; border-left: 4px solid #3B82F6;">
+                <div style="margin-bottom: 15px;">
+                  <span style="display: block; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">Doctor</span>
+                  <span style="font-size: 16px; font-weight: 600; color: #111;">Dr. ${doctor.name}</span>
+                  <span style="display: block; font-size: 14px; color: #666;">${doctor.specialization}</span>
+                </div>
+                
+                <div style="display: flex; gap: 40px;">
+                  <div>
+                    <span style="display: block; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">Date</span>
+                    <span style="font-size: 16px; font-weight: 600; color: #111;">${new Date(appointment.date).toLocaleDateString()}</span>
+                  </div>
+                  <div>
+                    <span style="display: block; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">Time</span>
+                    <span style="font-size: 16px; font-weight: 600; color: #111;">${appointment.slot}</span>
+                  </div>
+                </div>
+             </div>
+          </div>
+
+          <div style="margin-bottom: 25px;">
+            <h3 style="color: #1f2937; margin-top: 0; font-size: 16px;">📍 Location</h3>
+            <p style="margin: 5px 0; color: #4B5563;">${doctor.address?.fullAddress || doctor.city}</p>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${process.env.CLIENT_URL}/dashboard" style="background: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">View Booking</a>
+          </div>
+
+          <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 30px;">
+            If you have questions, please contact support@docverse.com
+          </p>
+        </div>
+      </div>
+    `,
+    text: `Appointment Rescheduled\n\nNew Details:\nDoctor: Dr. ${doctor.name}\nDate: ${new Date(appointment.date).toLocaleDateString()}\nTime: ${appointment.slot}`,
   }),
 
   paymentVerifiedDoctor: (payment, doctor, patient, appointmentDate, appointmentSlot) => ({

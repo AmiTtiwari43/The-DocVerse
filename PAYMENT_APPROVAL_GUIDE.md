@@ -112,6 +112,7 @@ Response: Array of patient's payments
 ## Frontend UI Changes
 
 ### Admin Dashboard - Payments Tab
+- **Sorted View**: Payments sorted by booking time (newest first)
 - **Status Badges**: Shows both Gateway Status and Admin Status
 - **Action Buttons**: Only visible when `adminStatus === 'pending'`
 - **Approve Button** (Green): Calls `PATCH /api/admin/payments/:id/approve`
@@ -123,21 +124,19 @@ Response: Array of patient's payments
 
 ### On Approve
 **To Patient:**
-- Subject: "Payment Approved - Your Appointment is Confirmed"
+- Subject: "Payment Receipt - Transaction ID: ..."
 - Content:
-  - Payment amount confirmed
-  - Doctor name & specialization
-  - Appointment date & time slot
-  - Transaction ID
-  - Reminder to arrive 5 minutes early
+  - **Payment Receipt** design (Green/Teal)
+  - Verified by Admin badge
+  - Doctor, Date, Time, Amount
+  - Status: Waiting for Doctor Confirmation
 
 **To Doctor:**
-- Subject: "Payment Confirmed - New Appointment"
+- Subject: "Action Required: New Appointment Request (Payment Verified)"
 - Content:
-  - Patient name & email
-  - Payment amount
-  - Appointment date & time
-  - Notification that appointment is confirmed
+  - New appointment request details
+  - "Payment Verified" status
+  - Call to Action: Approve/Reject in Dashboard
 
 ### On Reject
 **To Patient:**

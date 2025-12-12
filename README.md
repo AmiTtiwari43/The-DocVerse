@@ -79,6 +79,8 @@ node seed.js
 - ✅ Appointment Booking System
 - ✅ Review & Rating System
 - ✅ UPI QR Code Payment Integration
+- ✅ 2-Step Payment & Appointment Approval
+- ✅ Detailed Digital Booking Receipts
 - ✅ Email Notifications (SendGrid)
 - ✅ Favorites/Wishlist
 - ✅ Admin Dashboard

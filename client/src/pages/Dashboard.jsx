@@ -799,22 +799,32 @@ const Dashboard = () => {
                             onUpdate={fetchAppointments}
                           />
                           {user?.role === 'doctor' && appointment.status === 'pending' && (
-                            <div className="flex gap-2 mt-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleStatusChange(appointment._id, 'confirmed')}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Confirm
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleStatusChange(appointment._id, 'cancelled')}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Cancel
-                              </Button>
+                            <div className="mt-2">
+                              {appointment.paymentId?.adminStatus === 'approved' ? (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleStatusChange(appointment._id, 'confirmed')}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleStatusChange(appointment._id, 'cancelled')}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
+                                  <Shield className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Waiting for Admin Payment Approval</span>
+                                </div>
+                              )}
                             </div>
                           )}
                           {user?.role === 'doctor' && appointment.status === 'confirmed' && (
