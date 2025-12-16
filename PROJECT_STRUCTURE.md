@@ -2,17 +2,176 @@
 
 This document provides a detailed map of the codebase to help new developers understand how the Doctor Review Management System is organized.
 
-## 🏗️ Root Directory
+## 📋 Complete Project File Structure
 
-- **`client/`**: React Frontend application
-- **`server/`**: Node.js/Express Backend API
-- **`README.md`**: Project overview and setup instructions
-- **`PAYMENT_APPROVAL_GUIDE.md`**: Guide for the 2-step payment/appointment approval flow
-- **`PROJECT_STRUCTURE.md`**: This file
+```
+DocAPP/
+├── .gitignore
+├── DEVELOPMENT_CHALLENGES_AND_SOLUTIONS.md
+├── FUTURE_SCOPE.md
+├── INSTALLATION_GUIDE.md
+├── LIBRARY_USAGE_MAP.md
+├── PAYMENT_APPROVAL_GUIDE.md
+├── PROJECT_REPORT.md
+├── PROJECT_STRUCTURE.md
+├── README.md
+├── SECURE_CREDENTIALS.txt.example
+├── START_HERE.md
+├── TRANSACTION_ID_FIX.md
+├── VERIFICATION_CHECKLIST.md
+│
+├── client/
+│   ├── SHADCN_SETUP.md
+│   ├── components.json
+│   ├── index.html
+│   ├── jsconfig.json
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── tailwind.config.js
+│   ├── vite.config.js
+│   │
+│   └── src/
+│       ├── App.jsx
+│       ├── index.css
+│       ├── main.jsx
+│       │
+│       ├── components/
+│       │   ├── AIChatWidget.jsx
+│       │   ├── AppointmentCard.jsx
+│       │   ├── CitySelector.jsx
+│       │   ├── ClinicSlideshow.jsx
+│       │   ├── DoctorCard.jsx
+│       │   ├── FavoriteButton.jsx
+│       │   ├── FilterSidebar.jsx
+│       │   ├── Footer.jsx
+│       │   ├── Navbar.jsx
+│       │   ├── PaymentModal.jsx
+│       │   ├── ProtectedRoute.jsx
+│       │   ├── RatingDistribution.jsx
+│       │   ├── RescheduleModal.jsx
+│       │   ├── ReviewCard.jsx
+│       │   │
+│       │   └── ui/
+│       │       ├── accordion.jsx
+│       │       ├── alert-dialog.jsx
+│       │       ├── alert.jsx
+│       │       ├── avatar.jsx
+│       │       ├── badge.jsx
+│       │       ├── button.jsx
+│       │       ├── calendar.jsx
+│       │       ├── card.jsx
+│       │       ├── checkbox.jsx
+│       │       ├── dialog.jsx
+│       │       ├── dropdown-menu.jsx
+│       │       ├── hover-card.jsx
+│       │       ├── input.jsx
+│       │       ├── label.jsx
+│       │       ├── popover.jsx
+│       │       ├── progress.jsx
+│       │       ├── select.jsx
+│       │       ├── separator.jsx
+│       │       ├── sheet.jsx
+│       │       ├── skeleton.jsx
+│       │       ├── switch.jsx
+│       │       ├── tabs.jsx
+│       │       ├── textarea.jsx
+│       │       ├── toast.jsx
+│       │       ├── toaster.jsx
+│       │       ├── tooltip.jsx
+│       │       └── use-toast.js
+│       │
+│       ├── context/
+│       │   ├── AppContext.jsx
+│       │   └── ThemeContext.jsx
+│       │
+│       ├── lib/
+│       │   └── utils.js
+│       │
+│       ├── pages/
+│       │   ├── AboutUs.jsx
+│       │   ├── ContactUs.jsx
+│       │   ├── Dashboard.jsx
+│       │   ├── DoctorProfile.jsx
+│       │   ├── Favorites.jsx
+│       │   ├── Home.jsx
+│       │   ├── Login.jsx
+│       │   ├── NotFound.jsx
+│       │   ├── Profile.jsx
+│       │   ├── Search.jsx
+│       │   └── Signup.jsx
+│       │
+│       └── utils/
+│           └── api.js
+│
+└── server/
+    ├── index.js
+    ├── list_models.js
+    ├── models_list.txt
+    ├── package.json
+    ├── package-lock.json
+    ├── seed.js
+    ├── simulate_booking.js
+    ├── test_context_verification.js
+    ├── test_fallback_logic.js
+    ├── test_gemini.js
+    ├── test_gemini_2.js
+    │
+    ├── config/
+    │   └── db.js
+    │
+    ├── controllers/
+    │   ├── adminController.js
+    │   ├── analyticsController.js
+    │   ├── appointmentController.js
+    │   ├── authController.js
+    │   ├── chatController.js
+    │   ├── doctorController.js
+    │   ├── favoriteController.js
+    │   ├── notificationController.js
+    │   ├── paymentController.js
+    │   ├── reviewController.js
+    │   └── userController.js
+    │
+    ├── middleware/
+    │   └── auth.js
+    │
+    ├── models/
+    │   ├── Appointment.js
+    │   ├── Chat.js
+    │   ├── Doctor.js
+    │   ├── Favorite.js
+    │   ├── Notification.js
+    │   ├── Payment.js
+    │   ├── Review.js
+    │   └── User.js
+    │
+    ├── routes/
+    │   ├── adminRoutes.js
+    │   ├── analyticsRoutes.js
+    │   ├── appointmentRoutes.js
+    │   ├── authRoutes.js
+    │   ├── chatRoutes.js
+    │   ├── doctorRoutes.js
+    │   ├── favoriteRoutes.js
+    │   ├── notificationRoutes.js
+    │   ├── paymentRoutes.js
+    │   ├── reviewRoutes.js
+    │   └── userRoutes.js
+    │
+    ├── scripts/
+    │   └── backfill_timestamps.js
+    │
+    └── utils/
+        ├── emailService.js
+        └── reminderService.js
+```
 
 ---
 
-## 🖥️ Client (Frontend)
+## � Directory & File Descriptions
+
+## �🖥️ Client (Frontend)
 
 Located in `client/src/`
 
