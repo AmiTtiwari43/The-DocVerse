@@ -41,7 +41,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
     if (process.env.EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
       const msg = {
         to,
-        from: process.env.EMAIL_FROM || 'noreply@docverse.com',
+        from: process.env.SENDGRID_VERIFIED_SENDER || process.env.EMAIL_FROM || 'noreply@docverse.com',
         subject,
         text,
         html,
