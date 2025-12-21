@@ -24,7 +24,7 @@ app.use(cookieParser());
 // Enable CORS
 app.use(
   cors({
-    origin: [process.env.CLIENT_URL || 'http://localhost:5173', 'http://localhost:5173', 'https://doctor-review-management-system-main.vercel.app'],
+    origin: [process.env.CLIENT_URL || 'http://localhost:5173', 'http://localhost:5173', 'https://doctor-review-management-system-main.vercel.app', 'https://doc-app-roan.vercel.app'],
     credentials: true,
   })
 );
