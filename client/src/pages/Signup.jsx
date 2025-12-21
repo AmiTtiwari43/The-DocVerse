@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useToast } from '../components/ui/use-toast';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import api from '../utils/api';
 import { motion } from 'framer-motion';
@@ -25,6 +25,7 @@ const GoogleLoginWrapper = () => {
                     title: "Signed up with Google!",
                     description: "Welcome to THE DocVerse!",
                 });
+                localStorage.setItem('token', res.data.token);
                 setUser(res.data.data);
                 navigate('/dashboard');
             }
@@ -61,6 +62,7 @@ const Signup = () => {
     password: '',
     role: 'patient',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -96,6 +98,7 @@ const Signup = () => {
          if (res.data.success) {
             // Update Context if possible, or just reload/navigate
             // Assuming AppContext checks cookies/token on mount
+            localStorage.setItem('token', res.data.token);
             toast({
                 variant: 'success',
                 title: 'Account Verified!',
@@ -163,7 +166,25 @@ const Signup = () => {
 
                   <div className="space-y-2">
                     <label htmlFor="password" className="text-sm font-medium">Password</label>
-                    <Input id="password" type="password" name="password" placeholder="Create a password" value={formData.password} onChange={handleChange} required />
+                    <div className="relative">
+                      <Input 
+                        id="password" 
+                        type={showPassword ? "text" : "password"} 
+                        name="password" 
+                        placeholder="Create a password" 
+                        value={formData.password} 
+                        onChange={handleChange} 
+                        required 
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                     <p className="text-xs text-muted-foreground">Must be 8+ chars, incl. number & special char.</p>
                   </div>
 

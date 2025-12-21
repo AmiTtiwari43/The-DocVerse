@@ -31,6 +31,7 @@ export const AppProvider = ({ children }) => {
     try {
       const response = await api.post('/auth/login', { email, password });
       if (response.data.success) {
+        localStorage.setItem('token', response.data.token);
         setUser(response.data.data);
         return response.data;
       }
@@ -54,6 +55,7 @@ export const AppProvider = ({ children }) => {
   const logout = async () => {
     try {
       await api.post('/auth/logout');
+      localStorage.removeItem('token');
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);

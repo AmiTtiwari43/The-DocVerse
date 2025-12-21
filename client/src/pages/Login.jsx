@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useToast } from '../components/ui/use-toast';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Stethoscope } from 'lucide-react';
+import { Stethoscope, Eye, EyeOff } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import api from '../utils/api';
 import { motion } from 'framer-motion';
@@ -28,6 +28,7 @@ const GoogleLoginWrapper = () => {
                     description: "Welcome back!",
                 });
                 // Manually update context since we bypassed specific context login fn
+                localStorage.setItem('token', res.data.token);
                 setUser(res.data.data);
                 navigate('/dashboard');
                 // Force reload to ensure context sync if needed, though setting state should work
@@ -56,6 +57,7 @@ const GoogleLoginWrapper = () => {
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAppContext();
   const { toast } = useToast();
@@ -132,20 +134,30 @@ const Login = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  name="password"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
+                <div className="space-y-2 relative">
+                  <label htmlFor="password" className="text-sm font-medium">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      placeholder="Enter your password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
 
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 shadow-lg" disabled={loading}>
@@ -181,7 +193,7 @@ const Login = () => {
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="text-center">
                   <p className="font-medium">Admin</p>
-                  <p className="text-muted-foreground">admin@demo.com</p>
+                  <p className="text-muted-foreground">at5518109@gmail.com</p>
                 </div>
                 <div className="text-center">
                   <p className="font-medium">Doctor</p>
@@ -192,7 +204,7 @@ const Login = () => {
                   <p className="text-muted-foreground">patient@demo.com</p>
                 </div>
               </div>
-              <p className="text-xs text-center text-muted-foreground mt-2">Password: admin123 / doctor123 / patient123</p>
+              <p className="text-xs text-center text-muted-foreground mt-2">Password: Amittiwari1 / doctor123 / patient123</p>
             </div>
           </CardContent>
         </Card>

@@ -76,6 +76,7 @@ exports.googleLogin = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      token: jwtToken,
       data: { id: user._id, name: user.name, email: user.email, role: user.role, profilePhoto: user.profilePhoto },
       message: 'Google login successful',
     });
@@ -220,6 +221,7 @@ exports.verifyEmail = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      token,
       data: { id: user._id, name: user.name, email: user.email, role: user.role },
       message: 'Email verified successfully',
     });
@@ -276,6 +278,7 @@ exports.login = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      token,
       data: { id: user._id, name: user.name, email: user.email, role: user.role },
       message: 'Login successful',
     });
