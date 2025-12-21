@@ -41,8 +41,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
     if (process.env.EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
       const msg = {
         to,
-        // HARDCODED for testing: matching the verified email exactly
-        from: 'at5518109@gmail.com',
+        from: process.env.EMAIL_FROM || 'noreply@docverse.com',
         subject,
         text,
         html,
