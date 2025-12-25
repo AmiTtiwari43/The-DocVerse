@@ -19,12 +19,31 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 // Cookie parser
+// Cookie parser
 app.use(cookieParser());
+
 
 // Enable CORS
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        process.env.CLIENT_URL,
+        'http://localhost:5173',
+        'https://doctor-review-management-system-main.vercel.app',
+        'https://doc-app-roan.vercel.app'
+      ];
+      
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+      
+      console.log('Blocked by CORS:', origin);
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   })
 );
@@ -61,6 +80,9 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -79,5 +101,3 @@ process.on('unhandledRejection', (err, promise) => {
   // Close server & exit process
   server.close(() => process.exit(1));
 });
-
-
